@@ -76,8 +76,8 @@ if __name__ == '__main__':
     # dataset_name = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_training_ML.mat'
     # dataset_for_testing_sohrabi = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_testing_Sohrabi.mat'
 
-    dataset_name = '/data/jabbarva/installations/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
-    dataset_for_testing_sohrabi = '/data/jabbarva/installations/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
+    dataset_name = '/datasets/DS_for_py_for_training_ML.mat'
+    dataset_for_testing_sohrabi = '/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 2 / K
