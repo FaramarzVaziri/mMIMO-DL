@@ -9,7 +9,7 @@ import numpy as np
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
-print('the device name: ', tf.test.gpu_device_name())
+print('the device name: ', tf.config.list_physical_devices('GPU'))
 if tf.test.gpu_device_name() == '/device:GPU:0':
     tf.device('/device:GPU:0')
 
