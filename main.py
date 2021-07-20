@@ -10,8 +10,8 @@ import numpy as np
 # tf.distribute.Strategy
 
 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',tf.config.list_physical_devices('GPU'))
-if 1:#tf.test.gpu_device_name() == '/device:GPU:0':
-  3#tf.device('/device:GPU:0')
+if tf.test.gpu_device_name() == '/device:GPU:0':
+    tf.device('/device:GPU:0')
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
 from CNN_model import CNN_model_class
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 8  # int(input("No. train samples: "))
+    train_dataset_size = 1024  # int(input("No. train samples: "))
     test_dataset_size = 8  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
     BATCHSIZE = 4  # int(input("batch size: "))
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     d = .5
     phi_c = .01
     phase_shift_stddiv = 0.0
-    Nsymb = 50  # min is 2 and max is inf
+    Nsymb = 4  # min is 2 and max is inf
 
     fc = 22.0e9
     c = 9.4e-19 #4.7e-18  #

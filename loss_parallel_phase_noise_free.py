@@ -21,7 +21,7 @@ class loss_parallel_phase_noise_free_class:
         self.phase_shift_stddiv = phase_shift_stddiv
 
     @tf.function
-    def Rx_and_Rq_calculation_per_sample_per_k(self,bundeled_inputs):
+    def C_per_sample_per_k(self,bundeled_inputs):
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs  # no vectorization
         T0 = tf.linalg.matmul(W_D_cplx, W_RF_cplx, adjoint_a=True, adjoint_b=True)
         T1 = tf.linalg.matmul(T0, H_complex, adjoint_a=False, adjoint_b=False)
@@ -41,7 +41,7 @@ class loss_parallel_phase_noise_free_class:
         return T8
 
     @tf.function
-    def Rx_and_Rq_calculation_per_sample(self,bundeled_inputs):
+    def C_per_sample(self,bundeled_inputs):
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
 
         # some pre-processeing on inputs
@@ -49,18 +49,25 @@ class loss_parallel_phase_noise_free_class:
         W_RF_cplx_vectorized = tf.tile([W_RF_cplx], multiples=[self.K, 1, 1])
         bundeled_inputs_vectorized_on_k = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx_vectorized,
                                            W_RF_cplx_vectorized]  # vectorized on k
-        T0 = tf.map_fn(self.Rx_and_Rq_calculation_per_sample_per_k, bundeled_inputs_vectorized_on_k,
+        T0 = tf.map_fn(self.C_per_sample_per_k, bundeled_inputs_vectorized_on_k,
                        fn_output_signature=tf.float32, parallel_iterations=self.K) #
         return tf.reduce_mean(T0)
 
     @tf.function
     def ergodic_capacity(self, bundeled_inputs):
+        # V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        # bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
+        # T0 = tf.map_fn(self.Rx_and_Rq_calculation_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
+        # return tf.multiply(-1.0, tf.reduce_mean(T0))
+
         V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-
         H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-
         bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
+        yyy = V_D_cplx[0,:]
 
-        T0 = tf.map_fn(self.Rx_and_Rq_calculation_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
+        T = 0
+        for ij in range(self.BATCHSIZE):
+            T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
 
-        return tf.multiply(-1.0, tf.reduce_mean(T0))
+        return -1.0*T/self.BATCHSIZE
