@@ -71,7 +71,7 @@ if __name__ == '__main__':
     d = .5
     phi_c = .01
     phase_shift_stddiv = 0.0
-    Nsymb = 50  # min is 2 and max is inf
+    Nsymb = 4  # min is 2 and max is inf
 
     fc = 22.0e9
     c = 9.4e-19  # 4.7e-18  #
