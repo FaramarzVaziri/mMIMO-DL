@@ -12,8 +12,8 @@ import numpy as np
 
 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',
       tf.config.list_physical_devices('GPU'))
-if 1:  # tf.test.gpu_device_name() == '/device:GPU:0':
-    3  # tf.device('/device:GPU:0')
+if  tf.test.gpu_device_name() == '/device:GPU:0':
+    tf.device('/device:GPU:0')
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
 from CNN_model import CNN_model_class
@@ -31,10 +31,10 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 102400  # int(input("No. train samples: "))
-    test_dataset_size = 1024  # int(input("No. test samples: "))
+    train_dataset_size = 8  # int(input("No. train samples: "))
+    test_dataset_size = 8  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
-    BATCHSIZE = 128  # int(input("batch size: "))
+    BATCHSIZE = 4  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
