@@ -10,8 +10,8 @@ import numpy as np
 # tf.distribute.Strategy
 
 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',tf.config.list_physical_devices('GPU'))
-if tf.test.gpu_device_name() == '/device:GPU:0':
-  tf.device('/device:GPU:0')
+if 1:# tf.test.gpu_device_name() == '/device:GPU:0':
+  3#tf.device('/device:GPU:0')
 
   # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
   from CNN_model import CNN_model_class
@@ -26,7 +26,6 @@ if __name__ == '__main__':
     print('The main code for running on Mieszkos gpu server')
 
     print('tf version', tf.version.VERSION)
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 102400  # int(input("No. train samples: "))
@@ -91,12 +90,12 @@ if __name__ == '__main__':
     from tensorflow.python.client import device_lib
 
     # print(device_lib.list_local_devices())
-    gpu_available = tf.test.is_gpu_available()
-    print('is GPU available: ', gpu_available)
+    gpu_available = tf.config.list_physical_devices('GPU')
+    print('>>>>>>>>>>>>> is GPU available: ', gpu_available)
     is_cuda_gpu_available = tf.test.is_gpu_available(cuda_only=True)
-    print('is_cuda_gpu_available: ', is_cuda_gpu_available)
+    print('>>>>>>>>>>>>> is_cuda_gpu_available: ', is_cuda_gpu_available)
     is_cuda_gpu_min_3 = tf.test.is_gpu_available(True, (3, 0))
-    print('is_cuda_gpu_min_3: ', is_cuda_gpu_min_3)
+    print('>>>>>>>>>>>>> is_cuda_gpu_min_3: ', is_cuda_gpu_min_3)
 
     # TRAINING - stage 1 ///////////////////////////////////////////////////////////////////////////////////////////////
     # In this stage, we do a phase noise free training to roughly optimize the beamformer
