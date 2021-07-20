@@ -39,13 +39,13 @@ if __name__ == '__main__':
     end = time.time()
     print("________------------_______________---------------____________------------elapsed time:", 1000 * (end - start), "ms")
 
-
-    print('________------------_______________---------------____________------------map_fn implementation')
-    x2 = tf.random.uniform([n, 1000, 1000])
-    start = time.time()
-    tf.map_fn(test_func, elems= x2)
-    end = time.time()
-    print("________------------_______________---------------____________------------elapsed time:", 1000 * (end - start), "ms")
+    #
+    # print('________------------_______________---------------____________------------map_fn implementation')
+    # x2 = tf.random.uniform([n, 1000, 1000])
+    # start = time.time()
+    # tf.map_fn(test_func, elems= x2)
+    # end = time.time()
+    # print("________------------_______________---------------____________------------elapsed time:", 1000 * (end - start), "ms")
 
     print('________------------_______________---------------____________------------VECTORIZED_MAP implementation')
     x2 = tf.random.uniform([n, 1000, 1000])
