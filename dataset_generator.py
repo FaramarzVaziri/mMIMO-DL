@@ -9,11 +9,12 @@ import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 from os.path import dirname, join as pjoin
-
-if tf.test.gpu_device_name() == '/device:GPU:0':
-  tf.device('/device:GPU:0')
+#
+# if tf.test.gpu_device_name() == '/device:GPU:0':
+#   tf.device('/device:GPU:0')
 
 class dataset_generator_class:
+
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, mat_fname, dataset_size):
         self.N_b_a = N_b_a
@@ -43,6 +44,7 @@ class dataset_generator_class:
 
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
+
     @tf.function
     def PHN_forall_RF(self, theta):
         #print('should be N_rf but is: ', theta.shape)

@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 class loss_parallel_phase_noise_free_class:
+
     def __init__(self,N_b_a,N_b_rf,N_u_a,N_u_rf,N_s,K,SNR,P,N_c,N_scatterers,angular_spread_rad,wavelength,d,BATCHSIZE,phase_shift_stddiv):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
@@ -49,7 +50,7 @@ class loss_parallel_phase_noise_free_class:
         bundeled_inputs_vectorized_on_k = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx_vectorized,
                                            W_RF_cplx_vectorized]  # vectorized on k
         T0 = tf.map_fn(self.Rx_and_Rq_calculation_per_sample_per_k, bundeled_inputs_vectorized_on_k,
-                       fn_output_signature=tf.float32, parallel_iterations=self.K)
+                       fn_output_signature=tf.float32, parallel_iterations=self.K) #
         return tf.reduce_mean(T0)
 
     @tf.function
@@ -60,7 +61,6 @@ class loss_parallel_phase_noise_free_class:
 
         bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
 
-        T0 = tf.map_fn(self.Rx_and_Rq_calculation_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32,
-                       parallel_iterations=self.BATCHSIZE)
+        T0 = tf.map_fn(self.Rx_and_Rq_calculation_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
 
         return tf.multiply(-1.0, tf.reduce_mean(T0))

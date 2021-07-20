@@ -35,10 +35,10 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240  # int(input("No. train samples: "))
+    train_dataset_size = 102400  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
-    BATCHSIZE = 8  # int(input("batch size: "))
+    BATCHSIZE = 32  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
@@ -152,10 +152,10 @@ if __name__ == '__main__':
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch')
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq= 'epoch') # profile_batch=2
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq= 'epoch') # profile_batch=2
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=3, #10
+    obj_ML_model.fit(the_dataset_train, epochs=50, #10
                      validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=2)
 
@@ -208,11 +208,11 @@ if __name__ == '__main__':
                                                        mode='min', verbose=1)
     log_dirTF = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch')  # profile_batch=2
+    # tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch')  # profile_batch=2
     #
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
-    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=3,  # 50
+    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10,  # 50
                          validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
                          validation_batch_size=BATCHSIZE, verbose=2)
     end_time_2 = time.time()

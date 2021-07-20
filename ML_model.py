@@ -7,10 +7,10 @@ norm_records = tf.keras.metrics.Mean(name='norm')
 
 
 class ML_model_class(tf.keras.Model):
+
     def __init__(self, model_dnn):
         super(ML_model_class, self).__init__()
         self.model_dnn = model_dnn
-
 
     def compile(self, optimizer, loss, activation, phase_noise):
         super(ML_model_class, self).compile()
@@ -19,6 +19,7 @@ class ML_model_class(tf.keras.Model):
         self.activation = activation
         self.phase_noise = phase_noise
 
+    @tf.function
     def train_step(self, inputs0):
         if (self.phase_noise == 'y'):
             # H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset
@@ -60,6 +61,7 @@ class ML_model_class(tf.keras.Model):
             return {"neg_capacity": loss_metric.result()}
 
     # see https://keras.io/api/models/model_training_apis/ for validation
+    @tf.function
     def test_step(self, inputs0):
         if (self.phase_noise == 'y'):
             csi_original, csi_tilde_0, PHN_B, PHN_U = inputs0
@@ -99,6 +101,7 @@ class ML_model_class(tf.keras.Model):
             loss_metric_test.update_state(test_loss)
 
             return {"neg_capacity_test": loss_metric_test.result()}  # , "norm": norm_records.result()}
+
 
     @property
     def metrics(self):

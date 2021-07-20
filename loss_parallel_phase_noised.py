@@ -3,6 +3,7 @@ import tensorflow as tf
 
 
 class paralle_loss_phase_noised_class:
+
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb,
                  sampling_ratio_time_domain_keep, sampling_ratio_subcarrier_domain_keep):

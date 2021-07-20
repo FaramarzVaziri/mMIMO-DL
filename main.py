@@ -1,9 +1,3 @@
-# THIS CODE CONTAINS:
-# - Separate train and test dataset creation for the phase-noised system [implementation completed on 2021-Jun-9]
-# - CNN structure that is adaptive to the MIMO size []
-# - Loss function of the phase noised system fully parallel [implementation completed on 2021-Jun-7]
-# - Training loop [implementation completed on 2021-Jun-8]
-
 
 # Imports libs /////////////////////////////////////////////////////////////////////////////////////////////////////////
 import datetime
@@ -31,7 +25,6 @@ from loss_parallel_phase_noised import paralle_loss_phase_noised_class
 if __name__ == '__main__':
     print('The main code for running on this computer')
 
-
     print('tf version', tf.version.VERSION)
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
@@ -39,11 +32,23 @@ if __name__ == '__main__':
     train_dataset_size = 102400  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
-    BATCHSIZE = 32  # int(input("batch size: "))
+    BATCHSIZE = 8  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
-    tensorboard_log_frequency = 1
+    # tensorboard_log_frequency = 1
+
+    # The one that worked
+    # # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    # train_dataset_size = 102400  # int(input("No. train samples: "))
+    # test_dataset_size = 1024  # int(input("No. test samples: "))
+    # width_of_network = 1  # float(input("Network's width parameter: "))
+    # BATCHSIZE = 32  # int(input("batch size: "))
+    # L_rate = 1e-4  # float(input("inital lr: "))
+    # dropout_rate = .5  # float(input("dropout rate: "))
+    # precision_fixer = 1e-6  # float(input("precision fixer additive: "))
+    # tensorboard_log_frequency = 1
+    #
 
     # PARAMETERS ///////////////////////////////////////////////////////////////////////////////////////////////////////
     N_b_a = 4
@@ -154,11 +159,11 @@ if __name__ == '__main__':
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch')
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq= 'epoch') # profile_batch=2
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq= 'epoch') # profile_batch=2
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model.fit(the_dataset_train, epochs=50, #10
-                     validation_data=the_dataset_test, callbacks=[reduce_lr, tensorboard_callback],
+                     validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
@@ -207,12 +212,12 @@ if __name__ == '__main__':
     reduce_lrTF = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity', factor=0.5, patience=2, min_lr=1e-12, mode='min', verbose=1)
     log_dirTF = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch') # profile_batch=2
+    # tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch') # profile_batch=2
     #
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
     obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10, #50
-                         validation_data=the_dataset_test_phn,  callbacks=[reduce_lrTF, tensorboard_callbackTF],
+                         validation_data=the_dataset_test_phn,  callbacks=[reduce_lrTF],
                          validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
