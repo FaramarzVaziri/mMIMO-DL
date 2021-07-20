@@ -236,6 +236,7 @@ class CNN_model_class:
         func_model = Model(inputs=csi, outputs=[vd, wd, vrf, wrf])
         return func_model
 
+    @tf.function
     def custom_actication(self, inputs):
         V_D, W_D, vrf, wrf = inputs
 
@@ -283,6 +284,12 @@ class CNN_model_class:
             # per subcarrier power normalization ---------------------------------------
             V_D_new_per_sample = []
             # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
+
+
+            # # repeating inputs for vectorization
+            # V_RF_per_sample_repeated = tf.tile([V_RF_per_sample], multiples=[self.K, 1, 1])
+
+
             for k in range(self.K):
                 T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
                 T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
