@@ -31,7 +31,7 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 8  # int(input("No. train samples: "))
+    train_dataset_size = 1024  # int(input("No. train samples: "))
     test_dataset_size = 8  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
     BATCHSIZE = 4  # int(input("batch size: "))
