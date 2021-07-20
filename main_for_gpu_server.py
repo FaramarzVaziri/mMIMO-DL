@@ -32,9 +32,9 @@ if __name__ == '__main__':
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 1024  # int(input("No. train samples: "))
-    test_dataset_size = 8  # int(input("No. test samples: "))
+    test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 10  # float(input("Network's width parameter: "))
-    BATCHSIZE = 4  # int(input("batch size: "))
+    BATCHSIZE = 128  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     N_u_rf = 2
     N_u_o = N_u_rf
     N_s = 1
-    K = 4
+    K = 32
     SNR = 20.
     P = 100.
     sigma2 = 1.  # P / (10 ** (SNR / 10.))
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
-    truncation_ratio_keep = 2 / K
+    truncation_ratio_keep = 4 / K
     sampling_ratio_time_domain_keep = 4 / Nsymb
     sampling_ratio_subcarrier_domain_keep = 4 / K
 
