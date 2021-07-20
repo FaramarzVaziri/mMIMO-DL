@@ -30,26 +30,26 @@ def test_func(x):
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
 
-    print('for loop implementation')
-    n=1000
+    print('________------------_______________---------------____________------------for loop implementation')
+    n=100
     x = tf.random.uniform([1000, 1000])
     start = time.time()
     for i in range(n):
         tf.matmul(x, x)
     end = time.time()
-    print("elapsed time:", 1000 * (end - start), "ms")
+    print("________------------_______________---------------____________------------elapsed time:", 1000 * (end - start), "ms")
 
 
-    print('map_fn implementation')
-    x2 = tf.random.uniform([1000, 1000, 1000])
+    print('________------------_______________---------------____________------------map_fn implementation')
+    x2 = tf.random.uniform([100, 1000, 1000])
     start = time.time()
     tf.map_fn(test_func, elems= x2)
     end = time.time()
-    print("elapsed time:", 1000 * (end - start), "ms")
+    print("________------------_______________---------------____________------------elapsed time:", 1000 * (end - start), "ms")
 
-    print('VECTORIZED_MAP implementation')
-    x2 = tf.random.uniform([1000, 1000, 1000])
+    print('________------------_______________---------------____________------------VECTORIZED_MAP implementation')
+    x2 = tf.random.uniform([100, 1000, 1000])
     start = time.time()
     tf.vectorized_map(test_func, elems= x2)
     end = time.time()
-    print("elapsed time:", 1000 * (end - start), "ms")
+    print("________------------_______________---------------____________------------elapsed time:", 1000 * (end - start), "ms")
