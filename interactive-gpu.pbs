@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -l walltime=0:10:00,select=1:ncpus=1:mem=8gb:ngpus=1
+#PBS -I
+#PBS -q interactive_gpu
+#PBS -N mta_inference
+#PBS -A st-lampe-1-gpu
+ 
+################################################################################
+
+module load python3
+module load openblas/0.3.6
+module load py-numpy/1.16.4-py3.7.3
+module load py-pandas
+module load py-scipy
+module load py-pytz
+module load py-python-dateutil
+module load py-six
+
