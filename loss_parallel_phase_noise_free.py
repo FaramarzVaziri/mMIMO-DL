@@ -29,9 +29,9 @@ class loss_parallel_phase_noise_free_class:
         T3 = tf.linalg.matmul(T2, V_D_cplx, adjoint_a=False, adjoint_b=False)
         R_X = tf.linalg.matmul(T3, T3, adjoint_a=False, adjoint_b=True)
         R_Q = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-        # T4 = tf.cond(tf.equal(tf.zeros([1], dtype=tf.complex64), tf.linalg.det(R_Q)),
-        #              lambda: tf.multiply(tf.zeros([1], dtype=tf.complex64), R_Q), lambda: tf.linalg.inv(R_Q))
-        T4 = tf.linalg.inv(R_Q)
+        T4 = tf.cond(tf.equal(tf.zeros([1], dtype=tf.complex64), tf.linalg.det(R_Q)),
+                     lambda: tf.multiply(tf.zeros([1], dtype=tf.complex64), R_Q), lambda: tf.linalg.inv(R_Q))
+        # T4 = tf.linalg.inv(R_Q)
         T5 = tf.linalg.matmul(T4, R_X, adjoint_a=False, adjoint_b=False)
         T6 = tf.add(tf.eye(self.N_s, dtype=tf.complex64), tf.divide(T5, tf.cast(self.sigma2, dtype=tf.complex64)))
         T7 = tf.math.real(tf.linalg.det(T6))

@@ -270,8 +270,8 @@ class dataset_generator_class:
             Lambda_U=[]
 
 
-        my_dataset = my_dataset.cache()
+        # my_dataset = my_dataset.cache()
         my_dataset = my_dataset.batch(self.BATCHSIZE)
-        AUTOTUNE = tf.data.experimental.AUTOTUNE
-        my_dataset = my_dataset.prefetch(AUTOTUNE)
+        # AUTOTUNE = tf.data.experimental.AUTOTUNE
+        # my_dataset = my_dataset.prefetch(AUTOTUNE)
         return my_dataset, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U
