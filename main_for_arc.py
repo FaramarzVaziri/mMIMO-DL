@@ -1,9 +1,3 @@
-# THIS CODE CONTAINS:
-# - Separate train and test dataset creation for the phase-noised system [implementation completed on 2021-Jun-9]
-# - CNN structure that is adaptive to the MIMO size []
-# - Loss function of the phase noised system fully parallel [implementation completed on 2021-Jun-7]
-# - Training loop [implementation completed on 2021-Jun-8]
-
 
 # Imports libs /////////////////////////////////////////////////////////////////////////////////////////////////////////
 import datetime
@@ -15,7 +9,7 @@ import numpy as np
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
-print('the device name: ',tf.test.gpu_device_name())
+print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',tf.config.list_physical_devices('GPU'))
 if tf.test.gpu_device_name() == '/device:GPU:0':
   tf.device('/device:GPU:0')
 
