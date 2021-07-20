@@ -22,6 +22,7 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
+tf.debugging.set_log_device_placement(True)
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
@@ -160,12 +161,12 @@ if __name__ == '__main__':
                                                      mode='min', verbose=1)
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch')
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch')
     # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq='epoch', profile_batch=2)  #
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model.fit(the_dataset_train, epochs=50,  # 10
-                     validation_data=the_dataset_test, callbacks=[reduce_lr],
+                     validation_data=the_dataset_test, callbacks=[reduce_lr, tensorboard_callback],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
