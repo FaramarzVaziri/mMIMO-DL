@@ -73,14 +73,16 @@ class loss_parallel_phase_noise_free_class:
         # T0 = tf.map_fn(self.C_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
         # return tf.multiply(-1.0, tf.reduce_mean(T0))
 
-        # iml 2
-        V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-        T = 0
-        for ij in range(self.BATCHSIZE):
-            T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
 
-        return -1.0 * T / self.BATCHSIZE
+        # # iml 2
+        # V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        # T = 0
+        # for ij in range(self.BATCHSIZE):
+        #     T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
+        #
+        # return -1.0 * T / self.BATCHSIZE
+
 
     #     # impl3
     #     V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
@@ -92,3 +94,28 @@ class loss_parallel_phase_noise_free_class:
     # @tf.function
     # def function_vectorizer(self, fn, x):
     #     return tf.vectorized_map(fn, x)
+
+    # impl 4
+        T = self.custom_tf_while_loop(bundeled_inputs)
+        return -1.0 * T / self.BATCHSIZE
+
+    def custom_tf_while_loop(self, bundeled_inputs):
+        V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+
+        # Track both the loop index and summation in a tuple in the form (index, summation)
+        loop_index = tf.constant(0)
+        loop_output = tf.constant(0.0)
+
+        def loop_condition(loop_index, loop_summation):
+            loop_threshold = 128
+            return tf.less(loop_index, loop_threshold)
+
+        # The loop body, this will return a result tuple in the same form (index, summation)
+        def loop_body(loop_index, loop_output):
+            loop_output = loop_output + self.C_per_sample( [V_D_cplx[loop_index,:], W_D_cplx[loop_index,:], H_complex[loop_index,:], V_RF_cplx[loop_index,:], W_RF_cplx[loop_index,:]])
+            loop_index = tf.add(loop_index, 1)
+            return loop_index, loop_output
+
+        # We do not care about the index value here, return only the summation
+        return tf.while_loop(loop_condition, loop_body, (loop_index, loop_output))[1]
