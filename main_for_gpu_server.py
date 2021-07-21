@@ -32,10 +32,10 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 1024  # int(input("No. train samples: "))
-    test_dataset_size = 1024  # int(input("No. test samples: "))
+    train_dataset_size = 8  # int(input("No. train samples: "))
+    test_dataset_size = 8  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
-    BATCHSIZE = 128  # int(input("batch size: "))
+    BATCHSIZE = 4  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     N_u_rf = 2
     N_u_o = N_u_rf
     N_s = 1
-    K = 32
+    K = 4
     SNR = 20.
     P = 100.
     sigma2 = 1.  # P / (10 ** (SNR / 10.))
