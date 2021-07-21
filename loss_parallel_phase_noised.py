@@ -35,8 +35,9 @@ class paralle_loss_phase_noised_class:
         else:  # q-k
             return tf.roll(Lambda_matrix, shift=tf.squeeze(k), axis=0)
 
-    @tf.autograph.experimental.do_not_convert
+
     @tf.function
+    @tf.autograph.experimental.do_not_convert
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int(self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
@@ -92,8 +93,9 @@ class paralle_loss_phase_noised_class:
     #     return mask_of_ones_after_shift_flip_false
 
     # R_X calculations /////////////////////////////////////////////////////////////////////////////////////////////////
-    @tf.autograph.experimental.do_not_convert
+
     @tf.function
+    @tf.autograph.experimental.do_not_convert
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H_k, Lambda_B_k, Lambda_U_k = bundeled_inputs_0
         T0 = tf.linalg.matmul(Lambda_U_k, H_k)
@@ -141,8 +143,9 @@ class paralle_loss_phase_noised_class:
 
     # R_Q calculations /////////////////////////////////////////////////////////////////////////////////////////////////
 
-    @tf.autograph.experimental.do_not_convert
+
     @tf.function
+    @tf.autograph.experimental.do_not_convert
     def non_zero_element_finder_for_H_hat(self, k, m, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int( self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
@@ -206,8 +209,9 @@ class paralle_loss_phase_noised_class:
         R = self.sigma2 * tf.linalg.matmul(C_m_k, C_m_k, adjoint_a=False, adjoint_b=True)
         return R
 
-    @tf.autograph.experimental.do_not_convert
+
     @tf.function
+    @tf.autograph.experimental.do_not_convert
     def Rq_calculation_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0
 
