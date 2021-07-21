@@ -5,14 +5,12 @@ import time
 import scipy.io as sio
 import tensorflow as tf
 import numpy as np
-
 # tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
-print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',
-      tf.config.list_physical_devices('GPU'))
-if  tf.test.gpu_device_name() == '/device:GPU:0':
+print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',tf.config.list_physical_devices('GPU'))
+if tf.test.gpu_device_name() == '/device:GPU:0':
     tf.device('/device:GPU:0')
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,7 +20,8 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
-tf.debugging.set_log_device_placement(True)
+# tf.debugging.set_log_device_placement(True)
+
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
@@ -54,17 +53,17 @@ if __name__ == '__main__':
     #
 
     # PARAMETERS ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    N_b_a = 16
+    N_b_a = 4
     N_b_rf = 2
     N_b_o = N_b_rf
-    N_u_a = 16
+    N_u_a = 4
     N_u_rf = 2
     N_u_o = N_u_rf
     N_s = 1
     K = 4
     SNR = 20.
     P = 100.
-    sigma2 = 1.  # P / (10 ** (SNR / 10.))
+    sigma2 = 1. #P / (10 ** (SNR / 10.))
     N_c = 5
     N_scatterers = 10
     angular_spread_rad = 0.1745  # 10deg
@@ -72,10 +71,10 @@ if __name__ == '__main__':
     d = .5
     phi_c = .01
     phase_shift_stddiv = 0.0
-    Nsymb = 4  # min is 2 and max is inf
+    Nsymb = 50  # min is 2 and max is inf
 
     fc = 22.0e9
-    c = 9.4e-19  # 4.7e-18  #
+    c = 9.4e-19 #4.7e-18  #
     # PHN_innovation_std = .098 # 2 * np.pi * fc * np.sqrt(c * Ts)
 
     f_0 = 100e3
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     Ts = 1. / fs
     # tensorboard_log_frequency = 10
 
-    PHN_innovation_std = np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
+    PHN_innovation_std = np.sqrt( 4.0*np.pi**2*f_0**2 * 10**(L/10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
 
     # dataset_name = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_training_ML.mat'
@@ -161,12 +160,12 @@ if __name__ == '__main__':
                                                      mode='min', verbose=1)
     log_dir = "logs_step1/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch',profile_batch='5,6')
-
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch',
+                                                          profile_batch='5,6')
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=50, #10
+    obj_ML_model.fit(the_dataset_train, epochs=50,  # 10
                      validation_data=the_dataset_test, callbacks=[tensorboard_callback],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
@@ -224,10 +223,6 @@ if __name__ == '__main__':
                                                      histogram_freq=1,
                                                      profile_batch='5,6')
 
-    # # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    # tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch',
-    #                                                         profile_batch=2)  # profile_batch=2
-    #
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
     obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10,  # 50
