@@ -40,36 +40,55 @@ class loss_parallel_phase_noise_free_class:
         T8 = tf.divide(tf.math.log(T7), tf.math.log(2.0))
         return T8
 
+    # @tf.function
+    # def C_per_sample(self,bundeled_inputs):
+    #     V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
+    #
+    #     # some pre-processeing on inputs
+    #     V_RF_cplx_vectorized = tf.tile([V_RF_cplx], multiples=[self.K, 1, 1])
+    #     W_RF_cplx_vectorized = tf.tile([W_RF_cplx], multiples=[self.K, 1, 1])
+    #     bundeled_inputs_vectorized_on_k = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx_vectorized,
+    #                                        W_RF_cplx_vectorized]  # vectorized on k
+    #     T0 = tf.map_fn(self.C_per_sample_per_k, bundeled_inputs_vectorized_on_k,
+    #                    fn_output_signature=tf.float32, parallel_iterations=self.K) #
+    #     return tf.reduce_mean(T0)
     @tf.function
     def C_per_sample(self,bundeled_inputs):
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
 
-        # some pre-processeing on inputs
-        V_RF_cplx_vectorized = tf.tile([V_RF_cplx], multiples=[self.K, 1, 1])
-        W_RF_cplx_vectorized = tf.tile([W_RF_cplx], multiples=[self.K, 1, 1])
-        bundeled_inputs_vectorized_on_k = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx_vectorized,
-                                           W_RF_cplx_vectorized]  # vectorized on k
-        T0 = tf.map_fn(self.C_per_sample_per_k, bundeled_inputs_vectorized_on_k,
-                       fn_output_signature=tf.float32, parallel_iterations=self.K) #
-        return tf.reduce_mean(T0)
+        T0 = 0
+        for k in range(self.K):
+            T0 = T0 + self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx])
+
+        return T0/self.K
 
 
     @tf.function
     @tf.autograph.experimental.do_not_convert
     def ergodic_capacity(self, bundeled_inputs):
-        V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-        bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
-        T0 = tf.map_fn(self.C_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
-        return tf.multiply(-1.0, tf.reduce_mean(T0))
-
+        # impl 1
         # V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
         # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
         # bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
-        # yyy = V_D_cplx[0,:]
-        #
-        # T = 0
-        # for ij in range(self.BATCHSIZE):
-        #     T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
-        #
-        # return -1.0*T/self.BATCHSIZE
+        # T0 = tf.map_fn(self.C_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
+        # return tf.multiply(-1.0, tf.reduce_mean(T0))
+
+        # iml 2
+        V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        T = 0
+        for ij in range(self.BATCHSIZE):
+            T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
+
+        return -1.0 * T / self.BATCHSIZE
+
+    #     # impl3
+    #     V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+    #     H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+    #     bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
+    #     T0 = self.function_vectorizer(self.C_per_sample, bundeled_inputs_modified)
+    #     return tf.multiply(-1.0, tf.reduce_mean(T0))
+    #
+    # @tf.function
+    # def function_vectorizer(self, fn, x):
+    #     return tf.vectorized_map(fn, x)

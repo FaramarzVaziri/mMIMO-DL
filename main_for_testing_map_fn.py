@@ -26,10 +26,9 @@ from loss_parallel_phase_noised import paralle_loss_phase_noised_class
 def test_func(x):
     return tf.matmul(x, x)
 
-
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
-    n = 1000
+    n = 100
     print('________------------_______________---------------____________------------for loop implementation')
 
     x = tf.random.uniform([1000, 1000])

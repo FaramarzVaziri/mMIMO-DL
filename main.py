@@ -158,14 +158,15 @@ if __name__ == '__main__':
         phase_noise='n')
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity', factor=0.5, patience=4, min_lr=1e-12,
                                                      mode='min', verbose=1)
-    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = "logs_step1/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch')
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq= 'epoch', profile_batch=2) #
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch',profile_batch='5,6')
+
+
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model.fit(the_dataset_train, epochs=50, #10
-                     validation_data=the_dataset_test, callbacks=[reduce_lr, tensorboard_callback],
+                     validation_data=the_dataset_test, callbacks=[tensorboard_callback],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
@@ -212,14 +213,17 @@ if __name__ == '__main__':
         activation=obj_CNN_model.custom_actication,
         phase_noise='y')
     reduce_lrTF = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity', factor=0.5, patience=2, min_lr=1e-12, mode='min', verbose=1)
-    log_dirTF = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    # # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch', profile_batch=2) # profile_batch=2
-    #
+
+    log_dirTF = "logs_step_2/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    tboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dirTF,
+                                                     histogram_freq=1,
+                                                     profile_batch='5,6')
+
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
     obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10, #50
-                         validation_data=the_dataset_test_phn,  callbacks=[reduce_lrTF, tensorboard_callbackTF],
+                         validation_data=the_dataset_test_phn,  callbacks=[tboard_callback],
                          validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
