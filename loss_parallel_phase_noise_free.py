@@ -57,42 +57,35 @@ class loss_parallel_phase_noise_free_class:
 
 
         # impl 2 -----------------------------------------------------------------
-        # V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        # T0 = 0
-        # for k in range(self.K):
-        #     T0 = T0 + self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx])
-        # return T0/self.K
-
-
-
-        # impl 3 -----------------------------------------------------------------
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
-
-        # Track both the loop index and summation in a tuple in the form (index, summation)
-        loop_index = tf.constant(0)
-        loop_output = tf.constant(0.0)
-
-        def loop_condition(loop_index, loop_output):
-            loop_threshold = self.K
-            return tf.less(loop_index, loop_threshold)
-
-        # The loop body, this will return a result tuple in the same form (index, summation)
-        def loop_body(loop_index, loop_output):
-            loop_output = loop_output + self.C_per_sample_per_k([V_D_cplx[loop_index,:], W_D_cplx[loop_index,:], H_complex[loop_index,:], V_RF_cplx, W_RF_cplx])
-            loop_index = tf.add(loop_index, 1)
-            return loop_index, loop_output
-
-        # We do not care about the index value here, return only the summation
-        T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations=self.K)[1]
-
-        return T/self.K
+        T0 = 0
+        for k in range(self.K):
+            T0 = T0 + self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx])
+        return T0/self.K
 
 
 
-
-
-
-
+        # # impl 3 -----------------------------------------------------------------
+        # V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        #
+        # # Track both the loop index and summation in a tuple in the form (index, summation)
+        # loop_index = tf.constant(0)
+        # loop_output = tf.constant(0.0)
+        #
+        # def loop_condition(loop_index, loop_output):
+        #     loop_threshold = self.K
+        #     return tf.less(loop_index, loop_threshold)
+        #
+        # # The loop body, this will return a result tuple in the same form (index, summation)
+        # def loop_body(loop_index, loop_output):
+        #     loop_output = loop_output + self.C_per_sample_per_k([V_D_cplx[loop_index,:], W_D_cplx[loop_index,:], H_complex[loop_index,:], V_RF_cplx, W_RF_cplx])
+        #     loop_index = tf.add(loop_index, 1)
+        #     return loop_index, loop_output
+        #
+        # # We do not care about the index value here, return only the summation
+        # T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations=self.K)[1]
+        #
+        # return T/self.K
 
 
 
@@ -120,14 +113,14 @@ class loss_parallel_phase_noise_free_class:
         # return tf.multiply(-1.0, tf.reduce_mean(T0))
 
 
-        # # iml 2
-        # V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-        # T = 0
-        # for ij in range(self.BATCHSIZE):
-        #     T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
-        #
-        # return -1.0 * T / self.BATCHSIZE
+        # iml 2
+        V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        T = 0
+        for ij in range(self.BATCHSIZE):
+            T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
+
+        return -1.0 * T / self.BATCHSIZE
 
 
     #     # impl3
@@ -143,25 +136,25 @@ class loss_parallel_phase_noise_free_class:
 
 
     # impl 4
-        V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-
-        # Track both the loop index and summation in a tuple in the form (index, summation)
-        loop_index = tf.constant(0)
-        loop_output = tf.constant(0.0)
-
-        def loop_condition(loop_index, loop_output):
-            loop_threshold = self.BATCHSIZE
-            return tf.less(loop_index, loop_threshold)
-
-        # The loop body, this will return a result tuple in the same form (index, summation)
-        def loop_body(loop_index, loop_output):
-            loop_output = loop_output + self.C_per_sample( [V_D_cplx[loop_index,:], W_D_cplx[loop_index,:], H_complex[loop_index,:], V_RF_cplx[loop_index,:], W_RF_cplx[loop_index,:]])
-            loop_index = tf.add(loop_index, 1)
-            return loop_index, loop_output
-
-        # We do not care about the index value here, return only the summation
-        T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations= self.BATCHSIZE)[1]
-
-        return -1.0 * T / self.BATCHSIZE
+    #     V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
+    #     H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+    #
+    #     # Track both the loop index and summation in a tuple in the form (index, summation)
+    #     loop_index = tf.constant(0)
+    #     loop_output = tf.constant(0.0)
+    #
+    #     def loop_condition(loop_index, loop_output):
+    #         loop_threshold = self.BATCHSIZE
+    #         return tf.less(loop_index, loop_threshold)
+    #
+    #     # The loop body, this will return a result tuple in the same form (index, summation)
+    #     def loop_body(loop_index, loop_output):
+    #         loop_output = loop_output + self.C_per_sample( [V_D_cplx[loop_index,:], W_D_cplx[loop_index,:], H_complex[loop_index,:], V_RF_cplx[loop_index,:], W_RF_cplx[loop_index,:]])
+    #         loop_index = tf.add(loop_index, 1)
+    #         return loop_index, loop_output
+    #
+    #     # We do not care about the index value here, return only the summation
+    #     T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations= self.BATCHSIZE)[1]
+    #
+    #     return -1.0 * T / self.BATCHSIZE
 
