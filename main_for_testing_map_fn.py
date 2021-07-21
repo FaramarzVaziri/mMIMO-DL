@@ -86,3 +86,39 @@ if __name__ == '__main__':
     # print(r)
     end = time.time()
     print("________------------_______________---------------____________------------tf.while implementation elapsed time:", 1000 * (end - start), "ms")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    start = time.time()
+    for i in range(n):
+        tf.matmul(x, x)
+    end = time.time()
+    print("________------------_______________---------------____________------------for loop implementation elapsed time:", 1000 * (end - start), "ms")
+
+    start = time.time()
+    tf.map_fn(test_func, elems= x2)
+    end = time.time()
+    print("________------------_______________---------------____________------------map_fn implementation elapsed time:", 1000 * (end - start), "ms")
+
+    start = time.time()
+    tf.vectorized_map(test_func, elems= x2)
+    end = time.time()
+    print("________------------_______________---------------____________------------VECTORIZED_MAP implementation elapsed time:", 1000 * (end - start), "ms")
+
+    start = time.time()
+    r = custom_tf_while_loop()
+    # print(r)
+    end = time.time()
+    print("________------------_______________---------------____________------------tf.while implementation elapsed time:", 1000 * (end - start), "ms")
+
