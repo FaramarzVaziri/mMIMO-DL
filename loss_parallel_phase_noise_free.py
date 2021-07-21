@@ -54,13 +54,55 @@ class loss_parallel_phase_noise_free_class:
     #     return tf.reduce_mean(T0)
     @tf.function
     def C_per_sample(self,bundeled_inputs):
+        # # impl 1
+        # V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
+        # T0 = 0
+        # for k in range(self.K):
+        #     T0 = T0 + self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx])
+        # return T0/self.K
+
+        # impl 2
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
 
-        T0 = 0
-        for k in range(self.K):
-            T0 = T0 + self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx])
+        # Track both the loop index and summation in a tuple in the form (index, summation)
+        loop_index = tf.constant(0)
+        loop_output = tf.constant(0.0)
 
-        return T0/self.K
+        def loop_condition(loop_index, loop_output):
+            loop_threshold = self.K
+            return tf.less(loop_index, loop_threshold)
+
+        # The loop body, this will return a result tuple in the same form (index, summation)
+        def loop_body(loop_index, loop_output):
+            loop_output = loop_output + self.C_per_sample_per_k([V_D_cplx[loop_index,:], W_D_cplx[loop_index,:], H_complex[loop_index,:], V_RF_cplx, W_RF_cplx])
+            loop_index = tf.add(loop_index, 1)
+            return loop_index, loop_output
+
+        # We do not care about the index value here, return only the summation
+        T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations=self.K)[1]
+
+        return T/self.K
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     @tf.function
@@ -96,10 +138,6 @@ class loss_parallel_phase_noise_free_class:
     #     return tf.vectorized_map(fn, x)
 
     # impl 4
-        T = self.custom_tf_while_loop(bundeled_inputs)
-        return -1.0 * T / self.BATCHSIZE
-
-    def custom_tf_while_loop(self, bundeled_inputs):
         V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
         H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
 
@@ -107,8 +145,8 @@ class loss_parallel_phase_noise_free_class:
         loop_index = tf.constant(0)
         loop_output = tf.constant(0.0)
 
-        def loop_condition(loop_index, loop_summation):
-            loop_threshold = 128
+        def loop_condition(loop_index, loop_output):
+            loop_threshold = self.BATCHSIZE
             return tf.less(loop_index, loop_threshold)
 
         # The loop body, this will return a result tuple in the same form (index, summation)
@@ -118,4 +156,7 @@ class loss_parallel_phase_noise_free_class:
             return loop_index, loop_output
 
         # We do not care about the index value here, return only the summation
-        return tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations= self.BATCHSIZE)[1]
+        T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations= self.BATCHSIZE)[1]
+
+        return -1.0 * T / self.BATCHSIZE
+
