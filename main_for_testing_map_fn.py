@@ -41,7 +41,7 @@ def custom_tf_while_loop():
     loop_output = tf.constant(0.0)
 
     def loop_condition(loop_index, loop_summation):
-        loop_threshold = 100
+        loop_threshold = 1000
         return tf.less(loop_index, loop_threshold)
 
     # The loop body, this will return a result tuple in the same form (index, summation)
@@ -61,7 +61,7 @@ def test_func(x):
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
-    n = 100
+    n = 1000
     x = tf.random.uniform([1000, 1000])
     start = time.time()
     for i in range(n):
