@@ -11,7 +11,7 @@ import numpy as np
 
 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',tf.config.list_physical_devices('GPU'))
 if tf.test.gpu_device_name() == '/device:GPU:0':
-  tf.device('/device:GPU:0')
+    tf.device('/device:GPU:0')
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
 from CNN_model import CNN_model_class
@@ -29,16 +29,14 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 102400  # int(input("No. train samples: "))
+    train_dataset_size = 1024  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
-    BATCHSIZE = 32  # int(input("batch size: "))
+    BATCHSIZE = 128  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
-    tensorboard_log_frequency = 1
-
-    # PARAMETERS ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    # tensorboard_log_frequency = 1
     N_b_a = 4
     N_b_rf = 2
     N_b_o = N_b_rf
@@ -46,10 +44,10 @@ if __name__ == '__main__':
     N_u_rf = 2
     N_u_o = N_u_rf
     N_s = 1
-    K = 4
+    K = 32
     SNR = 20.
     P = 100.
-    sigma2 = 1. #P / (10 ** (SNR / 10.))
+    sigma2 = 1.  # P / (10 ** (SNR / 10.))
     N_c = 5
     N_scatterers = 10
     angular_spread_rad = 0.1745  # 10deg
@@ -80,7 +78,7 @@ if __name__ == '__main__':
     # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
-    truncation_ratio_keep = 2/K
+    truncation_ratio_keep = 4/K
     sampling_ratio_time_domain_keep = 4/Nsymb
     sampling_ratio_subcarrier_domain_keep = 4/K
 

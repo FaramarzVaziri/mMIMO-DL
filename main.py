@@ -20,6 +20,8 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
+# tf.debugging.set_log_device_placement(True)
+
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
@@ -29,7 +31,7 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 1024  # int(input("No. train samples: "))
+    train_dataset_size = 8  # int(input("No. train samples: "))
     test_dataset_size = 8  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
     BATCHSIZE = 4  # int(input("batch size: "))
@@ -69,7 +71,7 @@ if __name__ == '__main__':
     d = .5
     phi_c = .01
     phase_shift_stddiv = 0.0
-    Nsymb = 4  # min is 2 and max is inf
+    Nsymb = 50  # min is 2 and max is inf
 
     fc = 22.0e9
     c = 9.4e-19 #4.7e-18  #
@@ -92,7 +94,7 @@ if __name__ == '__main__':
     dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
-    truncation_ratio_keep = 2/K
+    truncation_ratio_keep = 4/K
     sampling_ratio_time_domain_keep = 4/Nsymb
     sampling_ratio_subcarrier_domain_keep = 4/K
 

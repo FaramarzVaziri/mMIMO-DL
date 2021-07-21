@@ -241,7 +241,7 @@ class CNN_model_class:
 
 
 
-
+    @tf.autograph.experimental.do_not_convert
     @tf.function
     def custom_actication(self, inputs):
         V_D, W_D, vrf, wrf = inputs
@@ -274,7 +274,7 @@ class CNN_model_class:
         V_D_k_normalized = tf.divide(tf.multiply(V_D_k, tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),tf.sqrt(denum))
         return V_D_k_normalized
 
-
+    @tf.autograph.experimental.do_not_convert
     @tf.function
     def custorm_activation_per_sample(self, bundeled_inputs_0):
         vrf_cplx, wrf_cplx, V_D_cplx = bundeled_inputs_0

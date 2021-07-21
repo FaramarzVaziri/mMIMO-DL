@@ -48,9 +48,15 @@ class ML_model_class(tf.keras.Model):
                 V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(csi_original)
                 inputs1 = [V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx]
                 V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
-                # print(V_D_new.shape)
-                inputs1 = [V_D_new, W_D_cplx, csi_original, V_RF_cplx, W_RF_cplx]
-                d_loss = self.loss(inputs1)
+                # print('V_D_new.shape**********************************:   ', V_D_new.shape)
+                # print('V_D_cplx.shape*********************************:  ',V_D_cplx.shape)
+                # V_D_cplx_NEWWWW = tf.complex(V_D_cplx[:, :, :, :, 0], V_D_cplx[:, :, :, :, 1])
+                # print('V_D_cplx_NEWWWW.shape*********************************:  ', V_D_cplx_NEWWWW.shape)
+
+
+                inputs2 = [V_D_new, W_D_cplx, csi_original, V_RF_cplx, W_RF_cplx]
+                # inputs2 = inputs1
+                d_loss = self.loss(inputs2)
                 # print(d_loss.shape)
             grads = tape.gradient(d_loss, self.model_dnn.trainable_weights)
 

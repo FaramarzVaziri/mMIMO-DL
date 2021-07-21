@@ -53,6 +53,7 @@ class loss_parallel_phase_noise_free_class:
                        fn_output_signature=tf.float32, parallel_iterations=self.K) #
         return tf.reduce_mean(T0)
 
+    @tf.autograph.experimental.do_not_convert
     @tf.function
     def ergodic_capacity(self, bundeled_inputs):
         V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
