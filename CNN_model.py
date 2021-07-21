@@ -238,94 +238,8 @@ class CNN_model_class:
 
 
 
-    #
-    # # for loop implementation
-    # @tf.function
-    # @tf.autograph.experimental.do_not_convert
-    # def custom_actication(self, inputs):
-    #     V_D, W_D, vrf, wrf = inputs
-    #
-    #     V_D_cplx = tf.complex(V_D[:, :, :, :, 0], V_D[:, :, :, :, 1])
-    #     W_D_cplx = tf.complex(W_D[:, :, :, :, 0], W_D[:, :, :, :, 1])
-    #     vrf_cplx = tf.complex(tf.cos(vrf), tf.sin(vrf))
-    #     wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
-    #
-    #     # partially-connected analog beamformer matrix implementation ----------------
-    #     V_RF_list_forall_samples = []
-    #     W_RF_list_forall_samples = []
-    #     V_D_new_forall_samples = []
-    #
-    #     for ij in range(self.BATCHSIZE):
-    #         # partially-connected analog beamformer matrix implementation --------------
-    #
-    #         # for BS
-    #         vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx[ij, :], shape=[self.N_b_a, 1]),
-    #                                      tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
-    #         # print('vrf_zero_padded', vrf_zero_padded.shape)
-    #         r_bs = int(self.N_b_a / self.N_b_rf)
-    #         T2_BS = []
-    #         for i in range(self.N_b_rf):
-    #             T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
-    #             # print('T0_BS', T0_BS.shape)
-    #             T1_BS = tf.roll(T0_BS, shift=i, axis=1)
-    #             # print('T1_BS', T1_BS.shape)
-    #             T2_BS.append(T1_BS)
-    #         V_RF_per_sample = tf.concat(T2_BS, axis=0)
-    #         # print('V_RF_per_sample', V_RF_per_sample.shape)
-    #         V_RF_list_forall_samples.append(V_RF_per_sample)
-    #
-    #         # for UE
-    #         wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx[ij, :], shape=[self.N_u_a, 1]),
-    #                                      tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
-    #         r_ue = int(self.N_u_a / self.N_u_rf)
-    #         T2_UE = []
-    #         for i in range(self.N_u_rf):
-    #             T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
-    #             T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-    #             T2_UE.append(T1_UE)
-    #         W_RF_per_sample = tf.concat(T2_UE, axis=0)
-    #         W_RF_list_forall_samples.append(W_RF_per_sample)
-    #
-    #         # per subcarrier power normalization ---------------------------------------
-    #         V_D_new_per_sample = []
-    #         # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
-    #         for k in range(self.K):
-    #             T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
-    #             T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-    #             # denum = tf.add(denum , tf.linalg.trace(T1))
-    #             denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16,
-    #                                                            1e-16))  ####################################################### numeric precision flaw
-    #             # denum = tf.linalg.trace(T1)
-    #             # V_D_new_forall_samples.append(tf.divide( tf.multiply(V_D_cplx[ij,:,:,:] , tf.cast(tf.sqrt(P) ,dtype=tf.complex64)) , tf.sqrt(denum)))
-    #             V_D_new_per_sample.append(
-    #                 tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
-    #                           tf.sqrt(denum)))
-    #         V_D_new_forall_samples.append(tf.stack(V_D_new_per_sample, axis=0))
-    #
-    #     V_RF_cplx = tf.stack(V_RF_list_forall_samples, axis=0)
-    #     W_RF_cplx = tf.stack(W_RF_list_forall_samples, axis=0)
-    #     V_D_new = tf.stack(V_D_new_forall_samples, axis=0)
-    #
-    #     # print(V_RF_cplx.shape)
-    #
-    #     return V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # map_fn implementation
+    # for loop implementation
     @tf.function
     @tf.autograph.experimental.do_not_convert
     def custom_actication(self, inputs):
@@ -337,68 +251,64 @@ class CNN_model_class:
         wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
 
         # partially-connected analog beamformer matrix implementation ----------------
+        V_RF_list_forall_samples = []
+        W_RF_list_forall_samples = []
+        V_D_new_forall_samples = []
 
-        # --------------------------------------------------------------------------------------------------------------
-        bundeled_inputs_0 = [vrf_cplx, wrf_cplx, V_D_cplx]
-        # print('vrf_cplx shape', vrf_cplx.shape)
-        # print('wrf_cplx shape', wrf_cplx.shape)
-        # print('V_D_cplx shape', V_D_cplx.shape)
+        for ij in range(self.BATCHSIZE):
+            # partially-connected analog beamformer matrix implementation --------------
 
-        V_RF_cplx, W_RF_cplx, V_D_new_cplx = tf.map_fn(self.custorm_activation_per_sample, bundeled_inputs_0,
-                                                   fn_output_signature=(tf.complex64, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
+            # for BS
+            vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx[ij, :], shape=[self.N_b_a, 1]),
+                                         tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
+            # print('vrf_zero_padded', vrf_zero_padded.shape)
+            r_bs = int(self.N_b_a / self.N_b_rf)
+            T2_BS = []
+            for i in range(self.N_b_rf):
+                T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
+                # print('T0_BS', T0_BS.shape)
+                T1_BS = tf.roll(T0_BS, shift=i, axis=1)
+                # print('T1_BS', T1_BS.shape)
+                T2_BS.append(T1_BS)
+            V_RF_per_sample = tf.concat(T2_BS, axis=0)
+            # print('V_RF_per_sample', V_RF_per_sample.shape)
+            V_RF_list_forall_samples.append(V_RF_per_sample)
 
-        return V_D_new_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx
+            # for UE
+            wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx[ij, :], shape=[self.N_u_a, 1]),
+                                         tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
+            r_ue = int(self.N_u_a / self.N_u_rf)
+            T2_UE = []
+            for i in range(self.N_u_rf):
+                T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
+                T1_UE = tf.roll(T0_UE, shift=i, axis=1)
+                T2_UE.append(T1_UE)
+            W_RF_per_sample = tf.concat(T2_UE, axis=0)
+            W_RF_list_forall_samples.append(W_RF_per_sample)
 
-    @tf.function
-    def normalize_power_per_subcarrier(self, bundeled_inputs_0):
-        V_RF, V_D_k = bundeled_inputs_0
-        T0 = tf.linalg.matmul(V_RF, V_D_k, adjoint_a=False, adjoint_b=False)
-        T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-        # denum = tf.add(denum , tf.linalg.trace(T1))
-        denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16, 1e-16)) ###### numeric precision flaw
-        V_D_k_normalized = tf.divide(tf.multiply(V_D_k, tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),tf.sqrt(denum))
-        return V_D_k_normalized
+            # per subcarrier power normalization ---------------------------------------
+            V_D_new_per_sample = []
+            # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
+            for k in range(self.K):
+                T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
+                T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
+                # denum = tf.add(denum , tf.linalg.trace(T1))
+                denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16,
+                                                               1e-16))  ####################################################### numeric precision flaw
+                # denum = tf.linalg.trace(T1)
+                # V_D_new_forall_samples.append(tf.divide( tf.multiply(V_D_cplx[ij,:,:,:] , tf.cast(tf.sqrt(P) ,dtype=tf.complex64)) , tf.sqrt(denum)))
+                V_D_new_per_sample.append(
+                    tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
+                              tf.sqrt(denum)))
+            V_D_new_forall_samples.append(tf.stack(V_D_new_per_sample, axis=0))
 
+        V_RF_cplx = tf.stack(V_RF_list_forall_samples, axis=0)
+        W_RF_cplx = tf.stack(W_RF_list_forall_samples, axis=0)
+        V_D_new = tf.stack(V_D_new_forall_samples, axis=0)
 
-    @tf.function
-    @tf.autograph.experimental.do_not_convert
-    def custorm_activation_per_sample(self, bundeled_inputs_0):
-        vrf_cplx, wrf_cplx, V_D_cplx = bundeled_inputs_0
-        # for BS
-        vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx, shape=[self.N_b_a, 1]),
-                                     tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
-        # print('vrf_zero_padded', vrf_zero_padded.shape)
-        r_bs = int(self.N_b_a / self.N_b_rf)
-        T2_BS = []
-        for i in range(self.N_b_rf):
-            T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
-            # print('T0_BS', T0_BS.shape)
-            T1_BS = tf.roll(T0_BS, shift=i, axis=1)
-            # print('T1_BS', T1_BS.shape)
-            T2_BS.append(T1_BS)
-        V_RF_per_sample = tf.concat(T2_BS, axis=0)
+        # print(V_RF_cplx.shape)
 
-        # for UE
-        wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx, shape=[self.N_u_a, 1]),
-                                     tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
-        r_ue = int(self.N_u_a / self.N_u_rf)
-        T2_UE = []
-        for i in range(self.N_u_rf):
-            T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
-            T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-            T2_UE.append(T1_UE)
-        W_RF_per_sample = tf.concat(T2_UE, axis=0)
-
-        # per subcarrier power normalization ---------------------------------------
-
-        # repeating inputs for vectorization
-        V_RF_per_sample_repeated_K_times = tf.tile([V_RF_per_sample], multiples=[self.K, 1, 1])
-        bundeled_inputs_1 = [V_RF_per_sample_repeated_K_times, V_D_cplx]
-        V_D_cplx_normalized_per_sample = tf.map_fn(self.normalize_power_per_subcarrier, bundeled_inputs_1,
-                                        fn_output_signature=tf.complex64, parallel_iterations=self.K)
-
-
-        return V_RF_per_sample, W_RF_per_sample, V_D_cplx_normalized_per_sample
+        return V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx
 
 
 
@@ -415,7 +325,7 @@ class CNN_model_class:
 
 
     #
-    # # # tf.while loop implementation
+    # # map_fn implementation
     # @tf.function
     # @tf.autograph.experimental.do_not_convert
     # def custom_actication(self, inputs):
@@ -426,72 +336,81 @@ class CNN_model_class:
     #     vrf_cplx = tf.complex(tf.cos(vrf), tf.sin(vrf))
     #     wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
     #
+    #     # partially-connected analog beamformer matrix implementation ----------------
     #
-    #     loop_index = tf.constant(0)
-    #     loop_output = []
+    #     # --------------------------------------------------------------------------------------------------------------
+    #     bundeled_inputs_0 = [vrf_cplx, wrf_cplx, V_D_cplx]
+    #     # print('vrf_cplx shape', vrf_cplx.shape)
+    #     # print('wrf_cplx shape', wrf_cplx.shape)
+    #     # print('V_D_cplx shape', V_D_cplx.shape)
     #
-    #     def loop_condition(loop_index, loop_output):
-    #         loop_threshold = self.BATCHSIZE
-    #         return tf.less(loop_index, loop_threshold)
+    #     V_RF_cplx, W_RF_cplx, V_D_new_cplx = tf.map_fn(self.custorm_activation_per_sample, bundeled_inputs_0,
+    #                                                fn_output_signature=(tf.complex64, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
     #
-    #     # The loop body, this will return a result tuple in the same form (index, summation)
+    #     return V_D_new_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx
     #
-    #     def loop_body(loop_index, loop_output):
-    #         loop_output.append(( self.function_for_loop([V_D_cplx[loop_index, :], W_D_cplx[loop_index, :], vrf_cplx[loop_index,:], wrf_cplx[loop_index,:]]) ))
-    #         loop_index = tf.add(loop_index, 1)
-    #
-    #         print(loop_output)
-    #         return loop_index, loop_output
-    #
-    #     # We do not care about the index value here, return only the summation
-    #     T = tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations=self.BATCHSIZE)[1]
-    #
-    #     V_RF_cplx = T[0]
-    #     W_RF_cplx = T[1]
-    #     V_D_new = T[2]
-    #
-    #     return V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx
+    # @tf.function
+    # def normalize_power_per_subcarrier(self, bundeled_inputs_0):
+    #     V_RF, V_D_k = bundeled_inputs_0
+    #     T0 = tf.linalg.matmul(V_RF, V_D_k, adjoint_a=False, adjoint_b=False)
+    #     T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
+    #     # denum = tf.add(denum , tf.linalg.trace(T1))
+    #     denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16, 1e-16)) ###### numeric precision flaw
+    #     V_D_k_normalized = tf.divide(tf.multiply(V_D_k, tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),tf.sqrt(denum))
+    #     return V_D_k_normalized
     #
     #
-    # def function_for_loop(self, bundeled_inputs):
-    #         V_D_cplx, W_D_cplx, vrf_cplx, wrf_cplx= bundeled_inputs
-    #         # for BS
-    #         vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx, shape=[self.N_b_a, 1]),
-    #                                      tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
-    #         # print('vrf_zero_padded', vrf_zero_padded.shape)
-    #         r_bs = int(self.N_b_a / self.N_b_rf)
-    #         T2_BS = []
-    #         for i in range(self.N_b_rf):
-    #             T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
-    #             # print('T0_BS', T0_BS.shape)
-    #             T1_BS = tf.roll(T0_BS, shift=i, axis=1)
-    #             # print('T1_BS', T1_BS.shape)
-    #             T2_BS.append(T1_BS)
-    #         V_RF_per_sample = tf.concat(T2_BS, axis=0)
-    #         # print('V_RF_per_sample', V_RF_per_sample.shape)
+    # @tf.function
+    # @tf.autograph.experimental.do_not_convert
+    # def custorm_activation_per_sample(self, bundeled_inputs_0):
+    #     vrf_cplx, wrf_cplx, V_D_cplx = bundeled_inputs_0
+    #     # for BS
+    #     vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx, shape=[self.N_b_a, 1]),
+    #                                  tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
+    #     # print('vrf_zero_padded', vrf_zero_padded.shape)
+    #     r_bs = int(self.N_b_a / self.N_b_rf)
+    #     T2_BS = []
+    #     for i in range(self.N_b_rf):
+    #         T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
+    #         # print('T0_BS', T0_BS.shape)
+    #         T1_BS = tf.roll(T0_BS, shift=i, axis=1)
+    #         # print('T1_BS', T1_BS.shape)
+    #         T2_BS.append(T1_BS)
+    #     V_RF_per_sample = tf.concat(T2_BS, axis=0)
     #
-    #         # for UE
-    #         wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx, shape=[self.N_u_a, 1]),
-    #                                      tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
-    #         r_ue = int(self.N_u_a / self.N_u_rf)
-    #         T2_UE = []
-    #         for i in range(self.N_u_rf):
-    #             T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
-    #             T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-    #             T2_UE.append(T1_UE)
-    #         W_RF_per_sample = tf.concat(T2_UE, axis=0)
+    #     # for UE
+    #     wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx, shape=[self.N_u_a, 1]),
+    #                                  tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
+    #     r_ue = int(self.N_u_a / self.N_u_rf)
+    #     T2_UE = []
+    #     for i in range(self.N_u_rf):
+    #         T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
+    #         T1_UE = tf.roll(T0_UE, shift=i, axis=1)
+    #         T2_UE.append(T1_UE)
+    #     W_RF_per_sample = tf.concat(T2_UE, axis=0)
     #
-    #         # per subcarrier power normalization ---------------------------------------
-    #         V_D_new_per_sample = []
-    #         # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
-    #         for k in range(self.K):
-    #             T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[k, :, :], adjoint_a=False, adjoint_b=False)
-    #             T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-    #             # denum = tf.add(denum , tf.linalg.trace(T1))
-    #             denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16,
-    #                                                            1e-16))  ####################################################### numeric precision flaw
-    #             V_D_new_per_sample.append(
-    #                 tf.divide(tf.multiply(V_D_cplx[k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)), tf.sqrt(denum)))
+    #     # per subcarrier power normalization ---------------------------------------
     #
-    #         return V_RF_per_sample, W_RF_per_sample, tf.stack(V_D_new_per_sample, axis=0)
+    #     # repeating inputs for vectorization
+    #     V_RF_per_sample_repeated_K_times = tf.tile([V_RF_per_sample], multiples=[self.K, 1, 1])
+    #     bundeled_inputs_1 = [V_RF_per_sample_repeated_K_times, V_D_cplx]
+    #     V_D_cplx_normalized_per_sample = tf.map_fn(self.normalize_power_per_subcarrier, bundeled_inputs_1,
+    #                                     fn_output_signature=tf.complex64, parallel_iterations=self.K)
     #
+    #
+    #     return V_RF_per_sample, W_RF_per_sample, V_D_cplx_normalized_per_sample
+    #
+
+
+
+
+
+
+
+
+
+
+
+
+
+

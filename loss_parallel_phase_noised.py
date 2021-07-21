@@ -56,43 +56,6 @@ class paralle_loss_phase_noised_class:
         mask_of_ones_after_shift_total = tf.multiply(mask_of_ones_after_shift_flip_true,
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
-    #
-    # @tf.function
-    # def non_zero_element_finder_for_H_tilde_ft(self, k, truncation_ratio_keep):  # flip true
-    #     z = 1 - truncation_ratio_keep
-    #     B_orig = int(
-    #         self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
-    #     ZI = tf.math.floormod(B_orig + np.array(range(int(self.K * z))),
-    #                           self.K)  # zero indices for k-rolled fft sequence of phase noise
-    #     ZI = tf.cast(ZI, dtype=tf.int64)
-    #     s = ZI.shape
-    #     mask_of_zeros_before_shift = tf.sparse.to_dense(tf.sparse.SparseTensor(indices=tf.reshape(ZI, shape=[s[0], 1]),
-    #                                                                            values=tf.ones(shape=[s[0]],
-    #                                                                                           dtype=tf.int32),
-    #                                                                            dense_shape=[self.K]))
-    #     mask_of_ones_before_shift = tf.subtract(1, mask_of_zeros_before_shift)
-    #     mask_of_ones_after_shift_flip_true = tf.roll(tf.reverse(mask_of_ones_before_shift, axis=[0]),
-    #                                                  shift=tf.squeeze(k) + 1, axis=0)
-    #     return mask_of_ones_after_shift_flip_true
-    #
-    # @tf.function
-    # def non_zero_element_finder_for_H_tilde_ff(self, k, truncation_ratio_keep):  # flip false
-    #     z = 1 - truncation_ratio_keep
-    #     B_orig = int(
-    #         self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
-    #     ZI = tf.math.floormod(B_orig + np.array(range(int(self.K * z))),
-    #                           self.K)  # zero indices for k-rolled fft sequence of phase noise
-    #     ZI = tf.cast(ZI, dtype=tf.int64)
-    #     s = ZI.shape
-    #     mask_of_zeros_before_shift = tf.sparse.to_dense(tf.sparse.SparseTensor(indices=tf.reshape(ZI, shape=[s[0], 1]),
-    #                                                                            values=tf.ones(shape=[s[0]],
-    #                                                                                           dtype=tf.int32),
-    #                                                                            dense_shape=[self.K]))
-    #     mask_of_ones_before_shift = tf.subtract(1, mask_of_zeros_before_shift)
-    #     mask_of_ones_after_shift_flip_false = tf.roll(mask_of_ones_before_shift, shift=tf.squeeze(k), axis=0)
-    #     return mask_of_ones_after_shift_flip_false
-
-    # R_X calculations /////////////////////////////////////////////////////////////////////////////////////////////////
 
     @tf.function
     @tf.autograph.experimental.do_not_convert
@@ -124,15 +87,13 @@ class paralle_loss_phase_noised_class:
         T2 = tf.linalg.matmul(T1, V_RF)
         A_ns_k = tf.linalg.matmul(T2, V_D_k)
         R_X_k = tf.linalg.matmul(A_ns_k, A_ns_k, adjoint_a=False, adjoint_b=True)
+        # print('R_X_tmp: ', k, R_X_k)
         return R_X_k
 
     @tf.function
     def Rx_calculation_forall_k(self, bundeled_inputs_0):
+        # impl with map_fn ---------------------------------------------------------------------------------------------
         V_D_forsome_k, W_D_forsome_k, H_repeated_K_times, V_RF_repeated_K_times, W_RF_repeated_K_times, Lambda_B_repeated_K_times, Lambda_U_repeated_K_times, sampled_K = bundeled_inputs_0
-        #
-        # Lambda_B_forall_k_repeated_K_times = tf.tile([Lambda_B_forall_k], multiples=[int(self.sampling_ratio_subcarrier_domain_keep * self.K), 1, 1, 1])
-        # Lambda_U_forall_k_repeated_K_times = tf.tile([Lambda_U_forall_k], multiples=[int(self.sampling_ratio_subcarrier_domain_keep * self.K), 1, 1, 1])
-
         bundeled_inputs_1 = [V_D_forsome_k, W_D_forsome_k, H_repeated_K_times, V_RF_repeated_K_times,
                              W_RF_repeated_K_times,
                              Lambda_B_repeated_K_times, Lambda_U_repeated_K_times, sampled_K]
@@ -141,7 +102,16 @@ class paralle_loss_phase_noised_class:
                             self.sampling_ratio_subcarrier_domain_keep * self.K))  # parallel over all k subcarriers
         return R_X
 
-    # R_Q calculations /////////////////////////////////////////////////////////////////////////////////////////////////
+
+        # # # impl with for ---------------------------------------------------------------------------------------------
+        # [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K] = bundeled_inputs_0
+        # R_X_tmp = []
+        # for k in sampled_K:
+        #     R_X_tmp.append(self.Rx_calculation_per_k([V_D[k,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
+        #
+        # R_X = tf.stack(R_X_tmp, axis=0)
+        # return R_X
+
 
 
     @tf.function
@@ -259,15 +229,20 @@ class paralle_loss_phase_noised_class:
 
     @tf.function
     def Rq_calculation_forall_k(self, bundeled_inputs_0):
-        # V_D_repeated_K_times, W_D_forsome_k, H_repeated_K_times, V_RF_repeated_K_times, W_RF_repeated_K_times, \
-        # Lambda_B_repeated_K_times, Lambda_U_repeated_K_times, sampled_K = bundeled_inputs_0
-        #
-        # bundeled_inputs_1 = [V_D_repeated_K_times, W_D_forsome_k, H_repeated_K_times,
-        #                      V_RF_repeated_K_times, W_RF_repeated_K_times, Lambda_B_repeated_K_times,
-        #                      Lambda_U_repeated_K_times, sampled_K]
+        # impl with map_fn--------------------------------------------------------------------------------------------
         R_Q = tf.map_fn(self.Rq_calculation_per_k, bundeled_inputs_0, fn_output_signature=tf.complex64,
                         parallel_iterations=int( self.sampling_ratio_subcarrier_domain_keep * self.K))  # parallel over all K subcarriers
         return R_Q
+
+        # # impl with for --------------------------------------------------------------------------------------------
+        # [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K] = bundeled_inputs_0
+        # R_Q_tmp = []
+        # for k in sampled_K:
+        #     R_Q_tmp.append(self.Rq_calculation_per_k([V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
+        # R_Q = tf.stack(R_Q_tmp, axis=0)
+        # return R_Q
+
+
 
     # Capacity calculation
     @tf.function
@@ -287,7 +262,8 @@ class paralle_loss_phase_noised_class:
                        lambda: tf.multiply(eta, T3))
 
     @tf.function
-    def capacity_calculation_forall_k(self, bundeled_inputs_0):  # K*...
+    def capacity_calculation_forall_k(self, bundeled_inputs_0):
+        # impl with map_fn ---------------------------------------------------------------------------------------------
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # one sample of batch, RFs are not forall k
 
         sampled_K = tf.convert_to_tensor(
@@ -324,60 +300,111 @@ class paralle_loss_phase_noised_class:
                                      parallel_iterations=int(self.sampling_ratio_subcarrier_domain_keep * self.K)), axis=0)
         return C, RX_forall_k, RQ_forall_k
 
+        # # # impl with for ---------------------------------------------------------------------------------------------
+        # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # one sample of batch, RFs are not forall k
+        # sampled_K =np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False)
+        # bundeled_inputs_1 = [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K]
+        # RX_forall_k = self.Rx_calculation_forall_k(bundeled_inputs_1)
+        # RQ_forall_k = self.Rq_calculation_forall_k(bundeled_inputs_1)
+        # C = 0.0
+        # for k in sampled_K:
+        #     C = C + self.capacity_calculation_per_k([RX_forall_k[k,:], RQ_forall_k[k,:] ])
+        # return C/int(self.sampling_ratio_subcarrier_domain_keep * self.K), RX_forall_k, RQ_forall_k
+
+
     @tf.function
     def capacity_calculation_for_frame(self, bundeled_inputs_0):
+        # # impl with tf.map_fn ----------------------------------------------------------------------------------------
+        # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0
+        # # repeating inputs for vectorization
+        # V_D_repeated_Nsymb_times = tf.tile([V_D],
+        #                                    multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1,  1, 1])
+        # W_D_repeated_Nsymb_times = tf.tile([W_D],
+        #                                    multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1, 1])
+        # H_repeated_Nsymb_times = tf.tile([H],
+        #                                  multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1, 1])
+        # V_RF_repeated_Nsymb_times = tf.tile([V_RF],
+        #                                     multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1])
+        # W_RF_repeated_Nsymb_times = tf.tile([W_RF],
+        #                                     multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1])
+        #
+        # selected_symbols = tf.convert_to_tensor(
+        #     np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False), dtype=tf.int64)
+        # # print(selected_symbols.shape)
+        #
+        # sampled_Nsymb = tf.reshape(selected_symbols,
+        #                            shape=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1])
+        #
+        # mask_of_symbols = tf.sparse.to_dense(
+        #     tf.sparse.reorder(
+        #         tf.sparse.SparseTensor(
+        #             indices= sampled_Nsymb,
+        #             values=tf.ones(shape=[int(self.sampling_ratio_time_domain_keep * self.Nsymb)], dtype=tf.int32),
+        #             dense_shape=[self.Nsymb])))
+        # sampled_Nsymb = tf.cast(sampled_Nsymb, dtype = tf.int32)
+        # Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask=mask_of_symbols, axis=0)
+        # Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask=mask_of_symbols, axis=0)
+        #
+        # bundeled_inputs_1 = [V_D_repeated_Nsymb_times, W_D_repeated_Nsymb_times, H_repeated_Nsymb_times,
+        #                      V_RF_repeated_Nsymb_times, W_RF_repeated_Nsymb_times, Lambda_B_sampled, Lambda_U_sampled]
+        #
+        # ergodic_capacity_forall_OFDMs, RX_forall_k_forall_OFDMs, RQ_forall_k_forall_OFDMs = tf.map_fn(
+        #     self.capacity_calculation_forall_k, bundeled_inputs_1,
+        #     fn_output_signature=(tf.float32, tf.complex64, tf.complex64),
+        #     parallel_iterations=int(self.sampling_ratio_time_domain_keep * self.Nsymb))
+        # capacity_sequence_in_frame = tf.reshape(ergodic_capacity_forall_OFDMs,
+        #                                         shape=[1, int(self.sampling_ratio_time_domain_keep * self.Nsymb)])
+        # return capacity_sequence_in_frame, RX_forall_k_forall_OFDMs, RQ_forall_k_forall_OFDMs
+
+
+        # # impl with for ----------------------------------------------------------------------------------------------
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0
-        # repeating inputs for vectorization
-        V_D_repeated_Nsymb_times = tf.tile([V_D],
-                                           multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1,  1, 1])
-        W_D_repeated_Nsymb_times = tf.tile([W_D],
-                                           multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1, 1])
-        H_repeated_Nsymb_times = tf.tile([H],
-                                         multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1, 1])
-        V_RF_repeated_Nsymb_times = tf.tile([V_RF],
-                                            multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1])
-        W_RF_repeated_Nsymb_times = tf.tile([W_RF],
-                                            multiples=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1, 1])
+        selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
+        # print('selected_symbols::::::::::::::::::::::::::::::::::::', selected_symbols)
+        ergodic_capacity_forall_OFDMs_tmp = []
+        RX_forall_k_forall_OFDMs_tmp = []
+        RQ_forall_k_forall_OFDMs_tmp = []
+        for ns in selected_symbols:
+            T = self.capacity_calculation_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
+            ergodic_capacity_forall_OFDMs_tmp.append(T[0])
+            RX_forall_k_forall_OFDMs_tmp.append(T[1])
+            RQ_forall_k_forall_OFDMs_tmp.append(T[2])
 
-        selected_symbols = tf.convert_to_tensor(
-            np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False), dtype=tf.int64)
-        # print(selected_symbols.shape)
+        ergodic_capacity_forall_OFDMs = tf.stack(ergodic_capacity_forall_OFDMs_tmp, axis=0)
+        RX_forall_k_forall_OFDMs = tf.stack(RX_forall_k_forall_OFDMs_tmp, axis=0)
+        RQ_forall_k_forall_OFDMs = tf.stack(RQ_forall_k_forall_OFDMs_tmp, axis=0)
 
-        sampled_Nsymb = tf.reshape(selected_symbols,
-                                   shape=[int(self.sampling_ratio_time_domain_keep * self.Nsymb), 1])
-
-        mask_of_symbols = tf.sparse.to_dense(
-            tf.sparse.reorder(
-                tf.sparse.SparseTensor(
-                    indices= sampled_Nsymb,
-                    values=tf.ones(shape=[int(self.sampling_ratio_time_domain_keep * self.Nsymb)], dtype=tf.int32),
-                    dense_shape=[self.Nsymb])))
-        sampled_Nsymb = tf.cast(sampled_Nsymb, dtype = tf.int32)
-        Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask=mask_of_symbols, axis=0)
-        Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask=mask_of_symbols, axis=0)
-
-        bundeled_inputs_1 = [V_D_repeated_Nsymb_times, W_D_repeated_Nsymb_times, H_repeated_Nsymb_times,
-                             V_RF_repeated_Nsymb_times, W_RF_repeated_Nsymb_times, Lambda_B_sampled, Lambda_U_sampled]
-
-        ergodic_capacity_forall_OFDMs, RX_forall_k_forall_OFDMs, RQ_forall_k_forall_OFDMs = tf.map_fn(
-            self.capacity_calculation_forall_k, bundeled_inputs_1,
-            fn_output_signature=(tf.float32, tf.complex64, tf.complex64),
-            parallel_iterations=int(self.sampling_ratio_time_domain_keep * self.Nsymb))
-
-        # print(ergodic_capacity_forall_OFDMs.numpy())
-        # print(';')
         capacity_sequence_in_frame = tf.reshape(ergodic_capacity_forall_OFDMs,
                                                 shape=[1, int(self.sampling_ratio_time_domain_keep * self.Nsymb)])
-        # print(capacity_sequence_in_frame.shape)
-        # C_average_of_frame = tf.reduce_mean(ergodic_capacity_forall_OFDMs, axis=0)
-        # print(C_average_of_frame.shape)
         return capacity_sequence_in_frame, RX_forall_k_forall_OFDMs, RQ_forall_k_forall_OFDMs
+
 
     @tf.function
     def capacity_calculation_for_frame_for_batch(self, bundeled_inputs_0):
-        capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples = \
-            tf.map_fn(self.capacity_calculation_for_frame, bundeled_inputs_0,
-                      fn_output_signature=(tf.float32, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
+
+        # # impl with tf.map_fn ----------------------------------------------------------------------------------------
+        # capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples = \
+        #     tf.map_fn(self.capacity_calculation_for_frame, bundeled_inputs_0,
+        #               fn_output_signature=(tf.float32, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
+        #
+        # return tf.multiply(-1.0, tf.reduce_mean(tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), axis=1)), \
+        #        capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples
+
+
+        # impl with for ------------------------------------------------------------------------------------------------
+        V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0
+        capacity_sequence_in_frame_forall_samples_tmp = []
+        RX_forall_k_forall_OFDMs_forall_samples_tmp = []
+        RQ_forall_k_forall_OFDMs_forall_samples_tmp = []
+        for ij in range(self.BATCHSIZE):
+            T = self.capacity_calculation_for_frame([V_D[ij,:], W_D[ij,:], H[ij,:], V_RF[ij,:], W_RF[ij,:], Lambda_B[ij,:], Lambda_U[ij,:]])
+            capacity_sequence_in_frame_forall_samples_tmp.append(T[0])
+            RX_forall_k_forall_OFDMs_forall_samples_tmp.append(T[1])
+            RQ_forall_k_forall_OFDMs_forall_samples_tmp.append(T[2])
+
+        capacity_sequence_in_frame_forall_samples = tf.stack(capacity_sequence_in_frame_forall_samples_tmp, axis=0)
+        RX_forall_k_forall_OFDMs_forall_samples = tf.stack(RX_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
+        RQ_forall_k_forall_OFDMs_forall_samples = tf.stack(RQ_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
 
         return tf.multiply(-1.0, tf.reduce_mean(tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), axis=1)), \
                capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples

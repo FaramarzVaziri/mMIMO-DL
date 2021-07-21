@@ -35,7 +35,7 @@ if __name__ == '__main__':
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 10240  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
-    width_of_network = 1  # float(input("Network's width parameter: "))
+    width_of_network = 4  # float(input("Network's width parameter: "))
     BATCHSIZE = 128  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
@@ -89,11 +89,11 @@ if __name__ == '__main__':
     PHN_innovation_std = np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
 
-    # dataset_name = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_training_ML.mat'
-    # dataset_for_testing_sohrabi = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_testing_Sohrabi.mat'
+    dataset_name = '/arc/project/st-lampe-1/Faramarz/datasets/DS_for_py_for_training_ML.mat'
+    dataset_for_testing_sohrabi = '/arc/project/st-lampe-1/Faramarz/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
-    dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
-    dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
+    # dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
+    # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 4 / K
@@ -169,7 +169,7 @@ if __name__ == '__main__':
     start_time = time.time()
     obj_ML_model.fit(the_dataset_train, epochs=50,  # 10
                      validation_data=the_dataset_test, callbacks=[reduce_lr],
-                     validation_batch_size=BATCHSIZE, verbose=1)
+                     validation_batch_size=BATCHSIZE, verbose=2)
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     end_time_one_and_half = time.time()
     obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10,  # 50
                          validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
-                         validation_batch_size=BATCHSIZE, verbose=1)
+                         validation_batch_size=BATCHSIZE, verbose=2)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
 
