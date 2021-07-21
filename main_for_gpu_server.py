@@ -31,10 +31,10 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 1024  # int(input("No. train samples: "))
+    train_dataset_size = 10240  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1 # float(input("Network's width parameter: "))
-    BATCHSIZE = 4  # int(input("batch size: "))
+    BATCHSIZE = 32  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
@@ -165,9 +165,9 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    # obj_ML_model.fit(the_dataset_train, epochs=1,  # 10
-    #                  validation_data=the_dataset_test, callbacks=[tensorboard_callback],
-    #                  validation_batch_size=BATCHSIZE, verbose=1)
+    obj_ML_model.fit(the_dataset_train, epochs=100,  # 10
+                     validation_data=the_dataset_test, callbacks=[tensorboard_callback],
+                     validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')
