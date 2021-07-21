@@ -118,4 +118,4 @@ class loss_parallel_phase_noise_free_class:
             return loop_index, loop_output
 
         # We do not care about the index value here, return only the summation
-        return tf.while_loop(loop_condition, loop_body, (loop_index, loop_output))[1]
+        return tf.while_loop(loop_condition, loop_body, (loop_index, loop_output), parallel_iterations= self.BATCHSIZE)[1]
