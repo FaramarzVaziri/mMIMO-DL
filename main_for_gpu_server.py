@@ -34,7 +34,7 @@ if __name__ == '__main__':
     train_dataset_size = 1024  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1 # float(input("Network's width parameter: "))
-    BATCHSIZE = 128  # int(input("batch size: "))
+    BATCHSIZE = 4  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
