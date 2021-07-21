@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 10240  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
-    width_of_network = 1  # float(input("Network's width parameter: "))
+    width_of_network = 4 # float(input("Network's width parameter: "))
     BATCHSIZE = 128  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
