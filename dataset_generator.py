@@ -235,36 +235,36 @@ class dataset_generator_class:
                                :]
 
         H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        H_complex_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
+        # GENERATING PHASE NOISE DATASET
+        # Lambda_B is [1024 samps, 2 symbs, 4 K, 8 Nt, 8 Nr]
+        Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
+        Lambda_B_dataset = tf.data.Dataset.from_tensor_slices(Lambda_B)
+        Lambda_U_dataset = tf.data.Dataset.from_tensor_slices(Lambda_U)
+
+        # GENERATING H_tilde_0
+        Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_B,
+                                                               begin=[0, 0, 0, 0, 0],
+                                                               size=[self.dataset_size, 1, self.K, self.N_b_a,
+                                                                     self.N_b_a]))
+        Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_U,
+                                                               begin=[0, 0, 0, 0, 0],
+                                                               size=[self.dataset_size, 1, self.K, self.N_u_a,
+                                                                     self.N_u_a]))
+        bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
+
+        H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
+        H_tilde_0 = []
+        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
+        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
+        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
+        H_tilde_0_dataset = tf.data.Dataset.from_tensor_slices(H_tilde_0)
+
         if (phase_noise == "y"):
-            H_complex_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
-            # GENERATING PHASE NOISE DATASET
-            # Lambda_B is [1024 samps, 2 symbs, 4 K, 8 Nt, 8 Nr]
-            Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
-            Lambda_B_dataset = tf.data.Dataset.from_tensor_slices(Lambda_B)
-            Lambda_U_dataset = tf.data.Dataset.from_tensor_slices(Lambda_U)
-
-            # GENERATING H_tilde_0
-            Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_B,
-                                                                   begin=[0, 0, 0, 0, 0],
-                                                                   size=[self.dataset_size, 1, self.K, self.N_b_a,
-                                                                         self.N_b_a]))
-            Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_U,
-                                                                   begin=[0, 0, 0, 0, 0],
-                                                                   size=[self.dataset_size, 1, self.K, self.N_u_a,
-                                                                         self.N_u_a]))
-            bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
-
-            H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
-            H_tilde_0 = []
-            H_tilde_0.append(tf.math.real(H_tilde_0_complex))
-            H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
-            H_tilde_0 = tf.stack(H_tilde_0, axis=4)
-            H_tilde_0_dataset = tf.data.Dataset.from_tensor_slices(H_tilde_0)
-
             my_dataset = tf.data.Dataset.zip(
                 (H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset))
         else:
-            my_dataset = tf.data.Dataset.from_tensor_slices(H)
+            my_dataset = tf.data.Dataset.zip((H_complex_dataset, H_tilde_0_dataset))
             H_tilde_0_complex = []
             Lambda_B=[]
             Lambda_U=[]
