@@ -107,7 +107,7 @@ class loss_parallel_phase_noise_free_class:
     def ergodic_capacity(self, bundeled_inputs):
         # # impl 1
         # V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        # #H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
         # bundeled_inputs_modified = [V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
         # T0 = tf.map_fn(self.C_per_sample, bundeled_inputs_modified, fn_output_signature=tf.float32, parallel_iterations=self.BATCHSIZE) #
         # return tf.multiply(-1.0, tf.reduce_mean(T0))
@@ -115,10 +115,10 @@ class loss_parallel_phase_noise_free_class:
 
         # iml 2
         V_D_cplx, W_D_cplx, H, V_RF_cplx, W_RF_cplx = bundeled_inputs
-        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
         T = 0
         for ij in range(self.BATCHSIZE):
-            T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H_complex[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
+            T = T + self.C_per_sample( [V_D_cplx[ij,:], W_D_cplx[ij,:], H[ij,:], V_RF_cplx[ij,:], W_RF_cplx[ij,:]])
 
         return -1.0 * T / self.BATCHSIZE
 

@@ -42,10 +42,10 @@ class ML_model_class(tf.keras.Model):
             return {"neg_capacity": loss_metric.result()}
         else:
             # H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset
-            csi_original = inputs0
+            csi_original, csi_tilde_0 = inputs0
             with tf.GradientTape() as tape:
                 # Unpack the data
-                V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(csi_original)
+                V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(csi_tilde_0)
                 inputs1 = [V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx]
                 V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
                 # print('V_D_new.shape**********************************:   ', V_D_new.shape)
@@ -89,10 +89,10 @@ class ML_model_class(tf.keras.Model):
 
             return {"neg_capacity_test": loss_metric_test.result()}  # , "norm": norm_records.result()}
         else:
-            csi_original = inputs0
+            csi_original, csi_tilde_0 = inputs0
             # Unpack the data
             # print(csi_reduced.shape)
-            V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(csi_original, training=False)
+            V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(csi_tilde_0, training=False)
             inputs1 = [V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx]
             V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
             # print(V_D_new.shape)

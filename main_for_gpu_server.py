@@ -35,7 +35,7 @@ if __name__ == '__main__':
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1 # float(input("Network's width parameter: "))
     BATCHSIZE = 32  # int(input("batch size: "))
-    L_rate = 1e-4  # float(input("inital lr: "))
+    L_rate = 1e-5  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
     # tensorboard_log_frequency = 1
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model.fit(the_dataset_train, epochs=10,  # 10
-                     validation_data=the_dataset_test, callbacks=[tensorboard_callback],
+                     validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
     # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10,  # 50
-    #                      validation_data=the_dataset_test_phn, callbacks=[tboard_callback],
+    #                      validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
     #                      validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
