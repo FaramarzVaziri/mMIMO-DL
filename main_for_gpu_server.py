@@ -31,7 +31,7 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 102400  # int(input("No. train samples: "))
+    train_dataset_size = 2*102400  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = 1 # float(input("Network's width parameter: "))
     BATCHSIZE = 32  # int(input("batch size: "))
@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=20,  # 10
+    obj_ML_model.fit(the_dataset_train, epochs=10,  # 10
                      validation_data=the_dataset_test, callbacks=[tensorboard_callback],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
