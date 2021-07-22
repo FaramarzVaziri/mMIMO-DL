@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=50,  # 10
+    obj_ML_model.fit(the_dataset_train, epochs=20,  # 10
                      validation_data=the_dataset_test, callbacks=[tensorboard_callback],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
