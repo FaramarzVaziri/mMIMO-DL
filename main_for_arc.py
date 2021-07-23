@@ -1,16 +1,15 @@
+# when u copy from main, change verbose=2 and delete plots and remove tensorboard
 # Imports libs /////////////////////////////////////////////////////////////////////////////////////////////////////////
 import datetime
 import time
 import scipy.io as sio
 import tensorflow as tf
 import numpy as np
-
 # tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
-print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',
-      tf.config.list_physical_devices('GPU'))
+print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',tf.config.list_physical_devices('GPU'))
 if tf.test.gpu_device_name() == '/device:GPU:0':
     tf.device('/device:GPU:0')
 
@@ -21,7 +20,6 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
-
 # tf.debugging.set_log_device_placement(True)
 
 
@@ -35,9 +33,9 @@ if __name__ == '__main__':
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 10240  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
-    width_of_network = 4  # float(input("Network's width parameter: "))
-    BATCHSIZE = 128  # int(input("batch size: "))
-    L_rate = 1e-4  # float(input("inital lr: "))
+    width_of_network = 1 # float(input("Network's width parameter: "))
+    BATCHSIZE = 32  # int(input("batch size: "))
+    L_rate = 1e-5  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
     # tensorboard_log_frequency = 1
@@ -65,7 +63,7 @@ if __name__ == '__main__':
     K = 4
     SNR = 20.
     P = 100.
-    sigma2 = 1.  # P / (10 ** (SNR / 10.))
+    sigma2 = 1. #P / (10 ** (SNR / 10.))
     N_c = 5
     N_scatterers = 10
     angular_spread_rad = 0.1745  # 10deg
@@ -76,7 +74,7 @@ if __name__ == '__main__':
     Nsymb = 50  # min is 2 and max is inf
 
     fc = 22.0e9
-    c = 9.4e-19  # 4.7e-18  #
+    c = 9.4e-19 #4.7e-18  #
     # PHN_innovation_std = .098 # 2 * np.pi * fc * np.sqrt(c * Ts)
 
     f_0 = 100e3
@@ -86,19 +84,19 @@ if __name__ == '__main__':
     Ts = 1. / fs
     # tensorboard_log_frequency = 10
 
-    PHN_innovation_std = np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
+    PHN_innovation_std = np.sqrt( 4.0*np.pi**2*f_0**2 * 10**(L/10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
+
+    # dataset_name = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_training_ML.mat'
+    # dataset_for_testing_sohrabi = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_testing_Sohrabi.mat'
 
     dataset_name = '/arc/project/st-lampe-1/Faramarz/datasets/DS_for_py_for_training_ML.mat'
     dataset_for_testing_sohrabi = '/arc/project/st-lampe-1/Faramarz/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
-    # dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
-    # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
-
     # Truncation and sampling of sums
-    truncation_ratio_keep = 4 / K
+    truncation_ratio_keep = 2 / K
     sampling_ratio_time_domain_keep = 4 / Nsymb
-    sampling_ratio_subcarrier_domain_keep = 4 / K
+    sampling_ratio_subcarrier_domain_keep = 2 / K
 
     print('STEP 1: Parameter initialization is done.')
 
@@ -151,7 +149,6 @@ if __name__ == '__main__':
     obj_ML_model = ML_model_class(model_dnn=the_CNN_model)
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
-    # tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
     print(the_CNN_model.summary())
     obj_ML_model.compile(
         optimizer=optimizer_1,
@@ -167,7 +164,7 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=50,  # 10
+    obj_ML_model.fit(the_dataset_train, epochs=10,  # 10
                      validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=2)
 
@@ -178,7 +175,7 @@ if __name__ == '__main__':
     # In this stage, we do a phase noised training to accurately optimize the beamformer
     # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    # A. PHN-free dataset creation
+    # A. PHN dataset creation
     obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                     angular_spread_rad, wavelength, d, BATCHSIZE,
                                                     phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
@@ -227,9 +224,9 @@ if __name__ == '__main__':
 
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
-    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10,  # 50
-                         validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
-                         validation_batch_size=BATCHSIZE, verbose=2)
+    # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10, #50
+    #                      validation_data=the_dataset_test_phn,  callbacks=[reduce_lrTF],
+    #                      validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
 

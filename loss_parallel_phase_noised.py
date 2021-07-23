@@ -300,6 +300,8 @@ class paralle_loss_phase_noised_class:
                                      parallel_iterations=int(self.sampling_ratio_subcarrier_domain_keep * self.K)), axis=0)
         return C, RX_forall_k, RQ_forall_k
 
+
+
         # # # impl with for ---------------------------------------------------------------------------------------------
         # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # one sample of batch, RFs are not forall k
         # sampled_K =np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False)
@@ -406,5 +408,5 @@ class paralle_loss_phase_noised_class:
         RX_forall_k_forall_OFDMs_forall_samples = tf.stack(RX_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
         RQ_forall_k_forall_OFDMs_forall_samples = tf.stack(RQ_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
 
-        return tf.multiply(-1.0, tf.reduce_mean(tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), axis=1)), \
+        return -1.0*tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), \
                capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples
