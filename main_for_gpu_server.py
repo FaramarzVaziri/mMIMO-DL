@@ -191,24 +191,26 @@ if __name__ == '__main__':
     print('STEP 5: Dataset creation is done.')
 
     # C. Loss function creation (sampled)
-    obj_loss_parallel_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
-                                                                            P, N_c,
-                                                                            N_scatterers, angular_spread_rad,
-                                                                            wavelength,
-                                                                            d, BATCHSIZE, phase_shift_stddiv,
-                                                                            truncation_ratio_keep, Nsymb,
-                                                                            sampling_ratio_time_domain_keep,
-                                                                            sampling_ratio_subcarrier_domain_keep)
-    # obj_loss_parallel_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
-    #                                                                            SNR, P, N_c,
-    #                                                                            N_scatterers, angular_spread_rad,
-    #                                                                            wavelength,
-    #                                                                            d, BATCHSIZE, phase_shift_stddiv,
-    #                                                                            truncation_ratio_keep, Nsymb,
-    #                                                                            sampling_ratio_time_domain_keep,
-    #                                                                            sampling_ratio_subcarrier_domain_keep)
+    # obj_loss_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
+    #                                                                         P, N_c,
+    #                                                                         N_scatterers, angular_spread_rad,
+    #                                                                         wavelength,
+    #                                                                         d, BATCHSIZE, phase_shift_stddiv,
+    #                                                                         truncation_ratio_keep, Nsymb,
+    #                                                                         sampling_ratio_time_domain_keep,
+    #                                                                         sampling_ratio_subcarrier_domain_keep)
 
-    the_loss_function_phn_approx = obj_loss_parallel_phase_noised_approx.capacity_calculation_for_frame_for_batch
+
+    obj_loss_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
+                                                                               SNR, P, N_c,
+                                                                               N_scatterers, angular_spread_rad,
+                                                                               wavelength,
+                                                                               d, BATCHSIZE, phase_shift_stddiv,
+                                                                               truncation_ratio_keep, Nsymb,
+                                                                               sampling_ratio_time_domain_keep,
+                                                                               sampling_ratio_subcarrier_domain_keep)
+
+    the_loss_function_phn_approx = obj_loss_phase_noised_approx.capacity_calculation_for_frame_for_batch
 
     # D. Transfer learning
     obj_ML_model_phn = ML_model_class(model_dnn=obj_ML_model.model_dnn)
