@@ -131,7 +131,7 @@ class sequential_loss_phase_noised_class:
         T0 = tf.linalg.matmul(W_D_k, W_RF, adjoint_a=True, adjoint_b=True)
         # size_Lambda_U = Lambda_U.shape
         Lambda_U_for_k_subtract_m = tf.reshape(tf.slice(
-            Lambda_U, begin=[tf.math.floormod(tf.squeeze(k) - tf.squeeze(m), self.K), 0, 0], size=[1, self.N_u_a, self.N_u_a]),
+            Lambda_U, begin=[tf.math.floormod(tf.squeeze(tf.cast(k, dtype = tf.int32)) - tf.squeeze(tf.cast(m, dtype = tf.int32)), self.K), 0, 0], size=[1, self.N_u_a, self.N_u_a]),
             shape=[self.N_u_a, self.N_u_a])
         C_m_k = tf.linalg.matmul(T0, Lambda_U_for_k_subtract_m)
         R = self.sigma2 * tf.linalg.matmul(C_m_k, C_m_k, adjoint_a=False, adjoint_b=True)
