@@ -142,7 +142,7 @@ class sequential_loss_phase_noised_class:
     def Rq_calculation_per_k(self, V_D, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k):
         R_Q  = 0
         for m in range(self.K):
-            T0 = tf.cond(tf.equal(tf.cast(m, dtype = tf.int64), tf.cast(k, dtype = tf.int64)),
+            T0 = tf.cond(tf.equal(m,k),
                          lambda: self.R_N_Q_m_k(Lambda_U, W_D_k, W_RF, k, m)
                          ,
                          lambda: self.R_I_Q_m_k(H, Lambda_B, Lambda_U, V_D[m,:], V_RF, W_D_k, W_RF, k, m) +
@@ -170,11 +170,12 @@ class sequential_loss_phase_noised_class:
     @tf.function
     def capacity_calculation_forall_k(self, V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U):
         # # impl with for ---------------------------------------------------------------------------------------------
-        sampled_K = np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False)
+        sampled_K = np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False, )
+
         C = 0.0
         RX_forall_k_tmp = []
         RQ_forall_k_tmp = []
-        for k in sampled_K:
+        for k in sampled_K.astype(int):
             rx = self.Rx_calculation_per_k(V_D[k, :], W_D[k, :], H, V_RF, W_RF, Lambda_B, Lambda_U, k)
             rq = self.Rq_calculation_per_k(V_D, W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k)
             RX_forall_k_tmp.append(rx)
@@ -193,7 +194,7 @@ class sequential_loss_phase_noised_class:
         ergodic_capacity_forall_OFDMs_tmp = []
         RX_forall_k_forall_OFDMs_tmp = []
         RQ_forall_k_forall_OFDMs_tmp = []
-        for ns in selected_symbols:
+        for ns in selected_symbols.astype(int):
             T = self.capacity_calculation_forall_k(V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:])
             ergodic_capacity_forall_OFDMs_tmp.append(T[0])
             RX_forall_k_forall_OFDMs_tmp.append(T[1])
