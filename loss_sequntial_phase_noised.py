@@ -142,7 +142,7 @@ class sequential_loss_phase_noised_class:
     def Rq_calculation_per_k(self, V_D, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k):
         R_Q  = 0
         for m in range(self.K):
-            T0 = tf.cond(tf.equal(int(m), int(k)),
+            T0 = tf.cond(tf.equal(tf.cast(m, dtype = tf.int32), tf.cast(k, dtype = tf.int32)),
                          lambda: self.R_N_Q_m_k(Lambda_U, W_D_k, W_RF, k, m),
                          lambda: self.R_I_Q_m_k(H, Lambda_B, Lambda_U, V_D[m,:], V_RF, W_D_k, W_RF, k, m) +
                                  self.R_N_Q_m_k(Lambda_U, W_D_k, W_RF, k, m))
