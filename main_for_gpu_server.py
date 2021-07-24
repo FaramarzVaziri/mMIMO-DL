@@ -21,8 +21,9 @@ from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
 from loss_sequntial_phase_noised import sequential_loss_phase_noised_class
-# tf.debugging.set_log_device_placement(True)
+from dataset_generator_sequential import dataset_generator_sequential_class
 
+# tf.debugging.set_log_device_placement(True)
 
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,8 +34,8 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 1024  # int(input("No. train samples: "))
-    test_dataset_size = 1024  # int(input("No. test samples: "))
+    train_dataset_size = 8  # int(input("No. train samples: "))
+    test_dataset_size = 8  # int(input("No. test samples: "))
     width_of_network = .5 # float(input("Network's width parameter: "))
     BATCHSIZE = 4  # int(input("batch size: "))
     L_rate = 1e-5  # float(input("inital lr: "))
@@ -88,6 +89,9 @@ if __name__ == '__main__':
 
     PHN_innovation_std = np.sqrt( 4.0*np.pi**2*f_0**2 * 10**(L/10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
+
+    # dataset_name = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_training_ML.mat'
+    # dataset_for_testing_sohrabi = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_testing_Sohrabi.mat'
 
     dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
     dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
@@ -149,7 +153,7 @@ if __name__ == '__main__':
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
     # tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
-    print(the_CNN_model.summary())
+    # print(the_CNN_model.summary())
     obj_ML_model.compile(
         optimizer=optimizer_1,
         loss=the_loss_function,
@@ -164,7 +168,7 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=1, #10
+    obj_ML_model.fit(the_dataset_train, epochs=2,  # 10
                      validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
@@ -192,16 +196,13 @@ if __name__ == '__main__':
     print('STEP 5: Dataset creation is done.')
 
     # C. Loss function creation (sampled)
-    obj_loss_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
-                                                                            P, N_c,
-                                                                            N_scatterers, angular_spread_rad,
-                                                                            wavelength,
-                                                                            d, BATCHSIZE, phase_shift_stddiv,
-                                                                            truncation_ratio_keep, Nsymb,
-                                                                            sampling_ratio_time_domain_keep,
-                                                                            sampling_ratio_subcarrier_domain_keep)
+    obj_loss_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
+                                                                   N_scatterers, angular_spread_rad, wavelength,
+                                                                   d, BATCHSIZE, phase_shift_stddiv,
+                                                                   truncation_ratio_keep, Nsymb,
+                                                                   sampling_ratio_time_domain_keep,
+                                                                   sampling_ratio_subcarrier_domain_keep)
 
-    #
     # obj_loss_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
     #                                                                            SNR, P, N_c,
     #                                                                            N_scatterers, angular_spread_rad,
