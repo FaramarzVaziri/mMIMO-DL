@@ -24,6 +24,7 @@ from loss_sequntial_phase_noised import sequential_loss_phase_noised_class
 # tf.debugging.set_log_device_placement(True)
 
 
+
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
     print('The main code for running on this computer')
@@ -32,7 +33,7 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 102400  # int(input("No. train samples: "))
+    train_dataset_size = 1024  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
     width_of_network = .5 # float(input("Network's width parameter: "))
     BATCHSIZE = 4  # int(input("batch size: "))
@@ -163,7 +164,7 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=10, #10
+    obj_ML_model.fit(the_dataset_train, epochs=1, #10
                      validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=1)
 
@@ -191,24 +192,24 @@ if __name__ == '__main__':
     print('STEP 5: Dataset creation is done.')
 
     # C. Loss function creation (sampled)
-    # obj_loss_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
-    #                                                                         P, N_c,
-    #                                                                         N_scatterers, angular_spread_rad,
-    #                                                                         wavelength,
-    #                                                                         d, BATCHSIZE, phase_shift_stddiv,
-    #                                                                         truncation_ratio_keep, Nsymb,
-    #                                                                         sampling_ratio_time_domain_keep,
-    #                                                                         sampling_ratio_subcarrier_domain_keep)
+    obj_loss_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
+                                                                            P, N_c,
+                                                                            N_scatterers, angular_spread_rad,
+                                                                            wavelength,
+                                                                            d, BATCHSIZE, phase_shift_stddiv,
+                                                                            truncation_ratio_keep, Nsymb,
+                                                                            sampling_ratio_time_domain_keep,
+                                                                            sampling_ratio_subcarrier_domain_keep)
 
-
-    obj_loss_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
-                                                                               SNR, P, N_c,
-                                                                               N_scatterers, angular_spread_rad,
-                                                                               wavelength,
-                                                                               d, BATCHSIZE, phase_shift_stddiv,
-                                                                               truncation_ratio_keep, Nsymb,
-                                                                               sampling_ratio_time_domain_keep,
-                                                                               sampling_ratio_subcarrier_domain_keep)
+    #
+    # obj_loss_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
+    #                                                                            SNR, P, N_c,
+    #                                                                            N_scatterers, angular_spread_rad,
+    #                                                                            wavelength,
+    #                                                                            d, BATCHSIZE, phase_shift_stddiv,
+    #                                                                            truncation_ratio_keep, Nsymb,
+    #                                                                            sampling_ratio_time_domain_keep,
+    #                                                                            sampling_ratio_subcarrier_domain_keep)
 
     the_loss_function_phn_approx = obj_loss_phase_noised_approx.capacity_calculation_for_frame_for_batch
 
