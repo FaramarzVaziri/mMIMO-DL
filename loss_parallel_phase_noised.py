@@ -28,7 +28,7 @@ class paralle_loss_phase_noised_class:
         self.sampling_ratio_time_domain_keep = sampling_ratio_time_domain_keep
         self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
 
-    @tf.function
+    
     def cyclical_shift(self, Lambda_matrix, k, flip):
         if flip == True:  # k-q
             return tf.roll(tf.reverse(Lambda_matrix, axis=[0]), shift=tf.squeeze(k) + 1, axis=0)
@@ -36,7 +36,7 @@ class paralle_loss_phase_noised_class:
             return tf.roll(Lambda_matrix, shift=tf.squeeze(k), axis=0)
 
 
-    @tf.function
+    
     @tf.autograph.experimental.do_not_convert
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
@@ -57,7 +57,7 @@ class paralle_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    @tf.function
+    
     @tf.autograph.experimental.do_not_convert
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H_k, Lambda_B_k, Lambda_U_k = bundeled_inputs_0
@@ -65,7 +65,7 @@ class paralle_loss_phase_noised_class:
         T1 = tf.linalg.matmul(T0, Lambda_B_k)
         return T1
 
-    @tf.function
+    
     def Rx_calculation_per_k(self, bundeled_inputs_0):
         V_D_k, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0
         T0 = tf.linalg.matmul(W_D_k, W_RF, adjoint_a=True, adjoint_b=True)
@@ -90,7 +90,7 @@ class paralle_loss_phase_noised_class:
         # print('R_X_tmp: ', k, R_X_k)
         return R_X_k
 
-    @tf.function
+    
     def Rx_calculation_forall_k(self, bundeled_inputs_0):
         # impl with map_fn ---------------------------------------------------------------------------------------------
         V_D_forsome_k, W_D_forsome_k, H_repeated_K_times, V_RF_repeated_K_times, W_RF_repeated_K_times, Lambda_B_repeated_K_times, Lambda_U_repeated_K_times, sampled_K = bundeled_inputs_0
@@ -114,7 +114,7 @@ class paralle_loss_phase_noised_class:
 
 
 
-    @tf.function
+    
     @tf.autograph.experimental.do_not_convert
     def non_zero_element_finder_for_H_hat(self, k, m, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
@@ -136,12 +136,12 @@ class paralle_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    @tf.function
+    
     def H_hat_m_k_calculation(self, bundeled_inputs):
         H_k, Lambda_B_k, Lambda_U_k = bundeled_inputs
         return tf.linalg.matmul(tf.linalg.matmul(Lambda_U_k, H_k), Lambda_B_k)
 
-    @tf.function
+    
     def R_I_Q_m_k(self, bundeled_inputs_0):
         H, Lambda_B, Lambda_U, V_D, V_RF, W_D, W_RF, k, m = bundeled_inputs_0
         T0 = tf.linalg.matmul(W_D, W_RF, adjoint_a=True, adjoint_b=True)
@@ -164,7 +164,7 @@ class paralle_loss_phase_noised_class:
         R = tf.linalg.matmul(B_m_k, B_m_k, adjoint_a=False, adjoint_b=True)
         return R
 
-    @tf.function
+    
     def R_N_Q_m_k(self, bundeled_inputs_0):
         Lambda_U, W_D, W_RF, k, m = bundeled_inputs_0
         T0 = tf.linalg.matmul(W_D, W_RF, adjoint_a=True, adjoint_b=True)
@@ -180,7 +180,7 @@ class paralle_loss_phase_noised_class:
         return R
 
 
-    @tf.function
+    
     @tf.autograph.experimental.do_not_convert
     def Rq_calculation_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0
@@ -227,7 +227,7 @@ class paralle_loss_phase_noised_class:
                                              parallel_iterations=self.K), axis=0))
         return R_Q
 
-    @tf.function
+    
     def Rq_calculation_forall_k(self, bundeled_inputs_0):
         # impl with map_fn--------------------------------------------------------------------------------------------
         R_Q = tf.map_fn(self.Rq_calculation_per_k, bundeled_inputs_0, fn_output_signature=tf.complex64,
@@ -245,7 +245,7 @@ class paralle_loss_phase_noised_class:
 
 
     # Capacity calculation
-    @tf.function
+    
     def capacity_calculation_per_k(self, bundeled_inputs_0):
         R_X, R_Q = bundeled_inputs_0
         precision_fixer = 1e-7
@@ -261,7 +261,7 @@ class paralle_loss_phase_noised_class:
                        lambda: tf.divide(tf.math.log(T3), tf.math.log(2.0)),
                        lambda: tf.multiply(eta, T3))
 
-    @tf.function
+    
     def capacity_calculation_forall_k(self, bundeled_inputs_0):
         # impl with map_fn ---------------------------------------------------------------------------------------------
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # one sample of batch, RFs are not forall k
@@ -314,7 +314,7 @@ class paralle_loss_phase_noised_class:
         # return C/int(self.sampling_ratio_subcarrier_domain_keep * self.K), RX_forall_k, RQ_forall_k
 
 
-    @tf.function
+    
     def capacity_calculation_for_frame(self, bundeled_inputs_0):
         # # impl with tf.map_fn ----------------------------------------------------------------------------------------
         # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0
@@ -381,7 +381,7 @@ class paralle_loss_phase_noised_class:
         return capacity_sequence_in_frame, RX_forall_k_forall_OFDMs, RQ_forall_k_forall_OFDMs
 
 
-    @tf.function
+    
     def capacity_calculation_for_frame_for_batch(self, bundeled_inputs_0):
 
         # # impl with tf.map_fn ----------------------------------------------------------------------------------------

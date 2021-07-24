@@ -28,7 +28,7 @@ class sequential_loss_phase_noised_class:
         self.sampling_ratio_time_domain_keep = sampling_ratio_time_domain_keep
         self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
 
-    @tf.function
+    
     def cyclical_shift(self, Lambda_matrix, k, flip):
         if flip == True:  # k-q
             return tf.roll(tf.reverse(Lambda_matrix, axis=[0]), shift=tf.squeeze(k) + 1, axis=0)
@@ -36,7 +36,7 @@ class sequential_loss_phase_noised_class:
             return tf.roll(Lambda_matrix, shift=tf.squeeze(k), axis=0)
 
 
-    @tf.function
+    
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int(self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
@@ -56,13 +56,13 @@ class sequential_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    @tf.function
+    
     def H_tilde_k_calculation(self, H_k, Lambda_B_k, Lambda_U_k):
         T0 = tf.linalg.matmul(Lambda_U_k, H_k)
         T1 = tf.linalg.matmul(T0, Lambda_B_k)
         return T1
 
-    @tf.function
+    
     def Rx_calculation_per_k(self, V_D_k, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k):
         T0 = tf.linalg.matmul(W_D_k, W_RF, adjoint_a=True, adjoint_b=True)
         mask_of_ones = self.non_zero_element_finder_for_H_tilde(k, self.truncation_ratio_keep)
@@ -82,7 +82,7 @@ class sequential_loss_phase_noised_class:
         return R_X_k
 
 
-    @tf.function
+    
     def non_zero_element_finder_for_H_hat(self, k, m, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int( self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
@@ -103,11 +103,11 @@ class sequential_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    @tf.function
+    
     def H_hat_m_k_calculation(self, H_k, Lambda_B_k, Lambda_U_k):
         return tf.linalg.matmul(tf.linalg.matmul(Lambda_U_k, H_k), Lambda_B_k)
 
-    @tf.function
+    
     def R_I_Q_m_k(self, H, Lambda_B, Lambda_U, V_D_m, V_RF, W_D_k, W_RF, k, m):
         T0 = tf.linalg.matmul(W_D_k, W_RF, adjoint_a=True, adjoint_b=True)
         mask_of_ones = self.non_zero_element_finder_for_H_hat(tf.squeeze(k), tf.squeeze(m), self.truncation_ratio_keep)
@@ -126,7 +126,7 @@ class sequential_loss_phase_noised_class:
         R = tf.linalg.matmul(B_m_k, B_m_k, adjoint_a=False, adjoint_b=True)
         return R
 
-    @tf.function
+    
     def R_N_Q_m_k(self, Lambda_U, W_D_k, W_RF, k, m):
         T0 = tf.linalg.matmul(W_D_k, W_RF, adjoint_a=True, adjoint_b=True)
         # size_Lambda_U = Lambda_U.shape
@@ -138,7 +138,7 @@ class sequential_loss_phase_noised_class:
         return R
 
 
-    @tf.function
+    
     def Rq_calculation_per_k(self, V_D, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k):
         R_Q  = 0
         for m in range(self.K):
@@ -151,7 +151,7 @@ class sequential_loss_phase_noised_class:
 
 
     # Capacity calculation
-    @tf.function
+    
     def capacity_calculation_per_k(self, R_X, R_Q):
         precision_fixer = 1e-7
         R_Q = tf.add(precision_fixer * tf.eye(self.N_s, dtype=tf.complex64), R_Q)  # numeric precision flaw
@@ -166,7 +166,7 @@ class sequential_loss_phase_noised_class:
                        lambda: tf.divide(tf.math.log(T3), tf.math.log(2.0)),
                        lambda: tf.multiply(eta, T3))
 
-    @tf.function
+    
     def capacity_calculation_forall_k(self, V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U):
         # # impl with for ---------------------------------------------------------------------------------------------
         sampled_K = np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False, )
@@ -185,9 +185,8 @@ class sequential_loss_phase_noised_class:
         return C/int(self.sampling_ratio_subcarrier_domain_keep * self.K), RX_forall_k, RQ_forall_k
 
 
-    @tf.function
+    
     def capacity_calculation_for_frame(self, V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U):
-
         # # impl with for ----------------------------------------------------------------------------------------------
         selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
         ergodic_capacity_forall_OFDMs_tmp = []
@@ -207,7 +206,7 @@ class sequential_loss_phase_noised_class:
         return capacity_sequence_in_frame, RX_forall_k_forall_OFDMs, RQ_forall_k_forall_OFDMs
 
 
-    @tf.function
+    
     def capacity_calculation_for_frame_for_batch(self, bundeled_inputs_0):
 
         # impl with for ------------------------------------------------------------------------------------------------

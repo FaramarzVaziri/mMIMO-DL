@@ -240,7 +240,7 @@ class CNN_model_class:
 
 
     # for loop implementation
-    @tf.function
+    
     @tf.autograph.experimental.do_not_convert
     def custom_actication(self, inputs):
         V_D, W_D, vrf, wrf = inputs
@@ -326,7 +326,7 @@ class CNN_model_class:
 
     #
     # # map_fn implementation
-    # @tf.function
+    # 
     # @tf.autograph.experimental.do_not_convert
     # def custom_actication(self, inputs):
     #     V_D, W_D, vrf, wrf = inputs
@@ -349,7 +349,7 @@ class CNN_model_class:
     #
     #     return V_D_new_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx
     #
-    # @tf.function
+    # 
     # def normalize_power_per_subcarrier(self, bundeled_inputs_0):
     #     V_RF, V_D_k = bundeled_inputs_0
     #     T0 = tf.linalg.matmul(V_RF, V_D_k, adjoint_a=False, adjoint_b=False)
@@ -360,7 +360,7 @@ class CNN_model_class:
     #     return V_D_k_normalized
     #
     #
-    # @tf.function
+    # 
     # @tf.autograph.experimental.do_not_convert
     # def custorm_activation_per_sample(self, bundeled_inputs_0):
     #     vrf_cplx, wrf_cplx, V_D_cplx = bundeled_inputs_0

@@ -20,7 +20,7 @@ class loss_parallel_phase_noise_free_class:
         self.BATCHSIZE = BATCHSIZE
         self.phase_shift_stddiv = phase_shift_stddiv
 
-    @tf.function
+    
     def C_per_sample_per_k(self,bundeled_inputs):
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs  # no vectorization
         T0 = tf.linalg.matmul(W_D_cplx, W_RF_cplx, adjoint_a=True, adjoint_b=True)
@@ -41,7 +41,7 @@ class loss_parallel_phase_noise_free_class:
         return T8
 
 
-    @tf.function
+    
     def C_per_sample(self,bundeled_inputs):
         # # impl 1-----------------------------------------------------------------
         # V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
@@ -102,7 +102,7 @@ class loss_parallel_phase_noise_free_class:
 
 
 
-    @tf.function
+    
     @tf.autograph.experimental.do_not_convert
     def ergodic_capacity(self, bundeled_inputs):
         # # impl 1
