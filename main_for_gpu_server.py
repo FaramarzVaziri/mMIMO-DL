@@ -165,9 +165,9 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    # obj_ML_model.fit(the_dataset_train, epochs=2, #10
-    #                  validation_data=the_dataset_test, callbacks=[reduce_lr],
-    #                  validation_batch_size=BATCHSIZE, verbose=1)
+    obj_ML_model.fit(the_dataset_train, epochs=20, #10
+                     validation_data=the_dataset_test, callbacks=[reduce_lr],
+                     validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')
@@ -225,9 +225,9 @@ if __name__ == '__main__':
 
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
-    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=20,  # 50
-                         validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
-                         validation_batch_size=BATCHSIZE, verbose=1)
+    # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=20,  # 50
+    #                      validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
+    #                      validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
 
