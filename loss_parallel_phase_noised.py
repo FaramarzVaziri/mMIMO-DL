@@ -375,28 +375,28 @@ class paralle_loss_phase_noised_class:
 
     @tf.function
     def capacity_calculation_for_frame_for_batch(self, bundeled_inputs_0):
-        # impl with map_fn
-        capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples = \
-            tf.map_fn(self.capacity_calculation_for_frame, bundeled_inputs_0,
-                      fn_output_signature=(tf.float32, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
-
-        return tf.multiply(-1.0, tf.reduce_mean(tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), axis=1)), \
-               capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples
-
-        # # impl with for ------------------------------------------------------------------------------------------------
-        # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0
-        # capacity_sequence_in_frame_forall_samples_tmp = []
-        # RX_forall_k_forall_OFDMs_forall_samples_tmp = []
-        # RQ_forall_k_forall_OFDMs_forall_samples_tmp = []
-        # for ij in range(self.BATCHSIZE):
-        #     T = self.capacity_calculation_for_frame([V_D[ij,:], W_D[ij,:], H[ij,:], V_RF[ij,:], W_RF[ij,:], Lambda_B[ij,:], Lambda_U[ij,:]])
-        #     capacity_sequence_in_frame_forall_samples_tmp.append(T[0])
-        #     RX_forall_k_forall_OFDMs_forall_samples_tmp.append(T[1])
-        #     RQ_forall_k_forall_OFDMs_forall_samples_tmp.append(T[2])
+        # # impl with map_fn
+        # capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples = \
+        #     tf.map_fn(self.capacity_calculation_for_frame, bundeled_inputs_0,
+        #               fn_output_signature=(tf.float32, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
         #
-        # capacity_sequence_in_frame_forall_samples = tf.stack(capacity_sequence_in_frame_forall_samples_tmp, axis=0)
-        # RX_forall_k_forall_OFDMs_forall_samples = tf.stack(RX_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
-        # RQ_forall_k_forall_OFDMs_forall_samples = tf.stack(RQ_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
-        #
-        # return -1.0*tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), \
+        # return tf.multiply(-1.0, tf.reduce_mean(tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), axis=1)), \
         #        capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples
+
+        # impl with for ------------------------------------------------------------------------------------------------
+        V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0
+        capacity_sequence_in_frame_forall_samples_tmp = []
+        RX_forall_k_forall_OFDMs_forall_samples_tmp = []
+        RQ_forall_k_forall_OFDMs_forall_samples_tmp = []
+        for ij in range(self.BATCHSIZE):
+            T = self.capacity_calculation_for_frame([V_D[ij,:], W_D[ij,:], H[ij,:], V_RF[ij,:], W_RF[ij,:], Lambda_B[ij,:], Lambda_U[ij,:]])
+            capacity_sequence_in_frame_forall_samples_tmp.append(T[0])
+            RX_forall_k_forall_OFDMs_forall_samples_tmp.append(T[1])
+            RQ_forall_k_forall_OFDMs_forall_samples_tmp.append(T[2])
+
+        capacity_sequence_in_frame_forall_samples = tf.stack(capacity_sequence_in_frame_forall_samples_tmp, axis=0)
+        RX_forall_k_forall_OFDMs_forall_samples = tf.stack(RX_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
+        RQ_forall_k_forall_OFDMs_forall_samples = tf.stack(RQ_forall_k_forall_OFDMs_forall_samples_tmp, axis=0)
+
+        return -1.0*tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), \
+               capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples
