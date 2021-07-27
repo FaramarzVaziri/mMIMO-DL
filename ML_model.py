@@ -19,7 +19,7 @@ class ML_model_class(tf.keras.Model):
         self.activation = activation
         self.phase_noise = phase_noise
 
-    
+    @tf.function
     def train_step(self, inputs0):
         if (self.phase_noise == 'y'):
             # H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset
@@ -67,7 +67,7 @@ class ML_model_class(tf.keras.Model):
             return {"neg_capacity": loss_metric.result()}
 
     # see https://keras.io/api/models/model_training_apis/ for validation
-    
+    @tf.function
     def test_step(self, inputs0):
         if (self.phase_noise == 'y'):
             csi_original, csi_tilde_0, PHN_B, PHN_U = inputs0

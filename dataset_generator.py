@@ -45,30 +45,30 @@ class dataset_generator_class:
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
 
-    
+    @tf.function
     def PHN_forall_RF(self, theta):
         #print('should be N_rf but is: ', theta.shape)
         T0= tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32),
                                         axis=0))
         return T0
 
-    
+    @tf.function
     def PHN_forall_RF_forall_K(self, theta):
         #print('should be K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF, theta)
 
 
-    
+    @tf.function
     def PHN_forall_RF_forall_K_forall_symbols(self, theta):
         #print('should be Nsymb*K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF_forall_K, theta)
 
-    
+    @tf.function
     def PHN_forall_RF_forall_K_forall_symbols_forall_samples(self, theta):
         #print('should be dataset_size*Nsymb*K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF_forall_K_forall_symbols, theta)
 
-    
+    @tf.function
     def Wiener_phase_noise_generator_Ruoyu_for_one_frame_per_RF(self, Nrf):
         # r1, r2 = Inputs
         # PHN_innovation_std = 0.098# 2 * np.pi * self.fc * np.sqrt(self.c * self.Ts)
@@ -85,7 +85,7 @@ class dataset_generator_class:
         DFT_of_exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K = tf.signal.fft(exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K) # Computes the 1-dimensional discrete Fourier transform over the inner-most dimension of input
         return DFT_of_exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K
 
-    
+    @tf.function
     def PHN_for_all_frames(self, Nrf):
         N_frames = self.dataset_size
         Input = Nrf*tf.ones(shape=[N_frames], dtype= tf.int32)
@@ -95,7 +95,7 @@ class dataset_generator_class:
         DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf = tf.transpose(DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K, perm= [0, 1,3,2])
         return DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf
 
-    
+    @tf.function
     def phase_noise_dataset_generator(self):
         # BS
         PHN_B_DFT_domain_samples_K_Nrf_train = self.PHN_for_all_frames(self.N_b_rf) #self.dataset_size * self.Nsymb * self.K * N_rf
@@ -117,7 +117,7 @@ class dataset_generator_class:
     #     trans_DFT_PNsamps_cplx_K_Nrf = tf.transpose(DFT_PNsamps_cplx_K_Nrf, perm= [0, 1, 3, 2])  # batch, symb, k, rf
     #     return PNsamps_cplx_K_Nrf, trans_DFT_PNsamps_cplx_K_Nrf
     #
-    # 
+    # @tf.function
     # def phase_noise_dataset_generator(self):
     #     # BS
     #     dummy1, PHN_B_DFT_domain_samples_K_Nrf_train = self.Wiener_phase_noise_generator_Ruoyu(self.N_b_rf) #self.dataset_size * self.Nsymb * self.K * N_rf
@@ -127,7 +127,7 @@ class dataset_generator_class:
     #     Lambda_U = self.PHN_forall_RF_forall_K_forall_symbols_forall_samples(PHN_U_DFT_domain_samples_K_Nrf_train)
     #     return Lambda_B, Lambda_U
 
-    
+    @tf.function
     def cyclical_shift(self, Lambda_matrix, k, flip):
         if flip == True:  # k-q
             return tf.roll(tf.reverse(Lambda_matrix, axis=[0]), shift=tf.squeeze(k) + 1, axis=0)
@@ -136,7 +136,7 @@ class dataset_generator_class:
 
 
 
-    
+    @tf.function
     @tf.autograph.experimental.do_not_convert
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
@@ -158,14 +158,14 @@ class dataset_generator_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    
+    @tf.function
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H, Lambda_B, Lambda_U = bundeled_inputs_0
         T0 = tf.linalg.matmul(Lambda_U, H)
         T1 = tf.linalg.matmul(T0, Lambda_B)
         return T1
 
-    
+    @tf.function
     def h_tilde_0_calculation_per_k(self, bundeled_inputs_0):  # inherits from paralle_loss_phase_noised_class
         H_forall_k, Lambda_B_0_forall_k, Lambda_U_0_forall_k, k = bundeled_inputs_0
         mask_of_ones = self.non_zero_element_finder_for_H_tilde(k, self.truncation_ratio_keep)
@@ -184,7 +184,7 @@ class dataset_generator_class:
                                                                   self.K * self.truncation_ratio_keep)), axis=0))
         return H_tilde_0_k
 
-    
+    @tf.function
     def h_tilde_0_calculation_forall_k(self, bundeled_inputs_0):
         H_forall_k, Lambda_B_0_forall_k, Lambda_U_0_forall_k = bundeled_inputs_0
 
@@ -201,7 +201,7 @@ class dataset_generator_class:
                                        parallel_iterations=self.K)  # parallel over all k subcarriers
         return H_tilde_0_forall_k
 
-    
+    @tf.function
     def h_tilde_0_calculation_forall_k_forall_samps(self,
                                                     bundeled_inputs_0):  # parallel over all samples of the dataset
         # H_forall_k_forall_samps, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps = bundeled_inputs_0
@@ -212,7 +212,7 @@ class dataset_generator_class:
     # sample_1 = { [H], [Lambda_0, Lambda_1,..., Lambda_13], [H_tilde_0 = f(H,Lambda_B_0, Lambda_U_0)]}
     # so, Lambda_B/U have Nsymb times more samples
 
-    
+    @tf.function
     @tf.autograph.experimental.do_not_convert
     def dataset_generator(self, mode, phase_noise):
 
@@ -235,6 +235,7 @@ class dataset_generator_class:
                                :]
 
         H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+
         H_complex_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
         # GENERATING PHASE NOISE DATASET
         # Lambda_B is [1024 samps, 2 symbs, 4 K, 8 Nt, 8 Nr]
@@ -260,9 +261,9 @@ class dataset_generator_class:
         H_tilde_0 = tf.stack(H_tilde_0, axis=4)
         H_tilde_0_dataset = tf.data.Dataset.from_tensor_slices(H_tilde_0)
 
+
         if (phase_noise == "y"):
-            my_dataset = tf.data.Dataset.zip(
-                (H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset))
+            my_dataset = tf.data.Dataset.zip((H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset))
         else:
             my_dataset = tf.data.Dataset.zip((H_complex_dataset, H_tilde_0_dataset))
             H_tilde_0_complex = []
@@ -273,5 +274,5 @@ class dataset_generator_class:
         my_dataset = my_dataset.cache()
         my_dataset = my_dataset.batch(self.BATCHSIZE)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        my_dataset = my_dataset.prefetch(AUTOTUNE)
+        my_dataset = my_dataset.prefetch(self.BATCHSIZE)
         return my_dataset, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U

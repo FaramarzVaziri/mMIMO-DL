@@ -5,6 +5,8 @@ import time
 import scipy.io as sio
 import tensorflow as tf
 import numpy as np
+
+
 # tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
@@ -20,8 +22,8 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
-from loss_sequntial_phase_noised import sequential_loss_phase_noised_class
-from dataset_generator_sequential import dataset_generator_sequential_class
+# from profiling import profiling_class
+
 
 # tf.debugging.set_log_device_placement(True)
 
@@ -34,11 +36,11 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 1024  # int(input("No. train samples: "))
-    test_dataset_size = 1024  # int(input("No. test samples: "))
-    width_of_network = .5 # float(input("Network's width parameter: "))
+    train_dataset_size = 8  # int(input("No. train samples: "))
+    test_dataset_size = 8  # int(input("No. test samples: "))
+    width_of_network = 1  # float(input("Network's width parameter: "))
     BATCHSIZE = 4  # int(input("batch size: "))
-    L_rate = 1e-5  # float(input("inital lr: "))
+    L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
     # tensorboard_log_frequency = 1
@@ -152,7 +154,7 @@ if __name__ == '__main__':
     obj_ML_model = ML_model_class(model_dnn=the_CNN_model)
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
-    # tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
+    tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
     print(the_CNN_model.summary())
     obj_ML_model.compile(
         optimizer=optimizer_1,
@@ -163,14 +165,14 @@ if __name__ == '__main__':
                                                      mode='min', verbose=1)
     log_dir = "logs_step1/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch',profile_batch='5,6')
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch',profile_batch='5,6')
 
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=1, #10
-                     validation_data=the_dataset_test, callbacks=[reduce_lr],
-                     validation_batch_size=BATCHSIZE, verbose=1)
+    # obj_ML_model.fit(the_dataset_train, epochs=2, #10
+    #                  validation_data=the_dataset_test, callbacks=[reduce_lr],
+    #                  validation_batch_size=BATCHSIZE, verbose=1)
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')
@@ -179,7 +181,7 @@ if __name__ == '__main__':
     # In this stage, we do a phase noised training to accurately optimize the beamformer
     # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    # A. PHN dataset creation
+    # A. PHN-free dataset creation
     obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                     angular_spread_rad, wavelength, d, BATCHSIZE,
                                                     phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
@@ -196,23 +198,13 @@ if __name__ == '__main__':
     print('STEP 5: Dataset creation is done.')
 
     # C. Loss function creation (sampled)
-    obj_loss_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
+    obj_loss_parallel_phase_noised_approx = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
                                                                      N_scatterers, angular_spread_rad, wavelength,
                                                                      d, BATCHSIZE, phase_shift_stddiv,
                                                                      truncation_ratio_keep, Nsymb,
                                                                      sampling_ratio_time_domain_keep,
                                                                      sampling_ratio_subcarrier_domain_keep)
-
-    # obj_loss_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
-    #                                                                            SNR, P, N_c,
-    #                                                                            N_scatterers, angular_spread_rad,
-    #                                                                            wavelength,
-    #                                                                            d, BATCHSIZE, phase_shift_stddiv,
-    #                                                                            truncation_ratio_keep, Nsymb,
-    #                                                                            sampling_ratio_time_domain_keep,
-    #                                                                            sampling_ratio_subcarrier_domain_keep)
-
-    the_loss_function_phn_approx = obj_loss_phase_noised_approx.capacity_calculation_for_frame_for_batch
+    the_loss_function_phn_approx = obj_loss_parallel_phase_noised_approx.capacity_calculation_for_frame_for_batch
 
     # D. Transfer learning
     obj_ML_model_phn = ML_model_class(model_dnn=obj_ML_model.model_dnn)
@@ -228,37 +220,57 @@ if __name__ == '__main__':
     reduce_lrTF = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity', factor=0.5, patience=2, min_lr=1e-12, mode='min', verbose=1)
 
     log_dirTF = "logs_step_2/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-
-    tboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dirTF,
-                                                     histogram_freq=1,
-                                                     profile_batch='5,6')
+    #
+    # tboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dirTF,
+    #                                                  histogram_freq=1,
+    #                                                  profile_batch='5,6')
 
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
-    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10, #50
+    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=2, #50
                          validation_data=the_dataset_test_phn,  callbacks=[reduce_lrTF],
                          validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
     
     # F. Evaluation
-    obj_loss_parallel_phase_noised_accurate = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
-                                                                     N_scatterers, angular_spread_rad, wavelength,
-                                                                     d, BATCHSIZE, phase_shift_stddiv,
-                                                                     1, Nsymb,
-                                                                     1,
-                                                                     1)
-    the_loss_function_phn_accurate = obj_loss_parallel_phase_noised_accurate.capacity_calculation_for_frame_for_batch
+    # obj_loss_parallel_phase_noised_accurate = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
+    #                                                                  N_scatterers, angular_spread_rad, wavelength,
+    #                                                                  d, BATCHSIZE, phase_shift_stddiv,
+    #                                                                  1, Nsymb,
+    #                                                                  1,
+    #                                                                  1)
+    # the_loss_function_phn_accurate = obj_loss_parallel_phase_noised_accurate.capacity_calculation_for_frame_for_batch
 
-    obj_ML_model_phn.compile(
-        optimizer=optimizer_2,
-        loss=the_loss_function_phn_accurate,
-        activation=obj_CNN_model.custom_actication,
-        phase_noise='y')
-    Capacity_simul = obj_ML_model_phn.evaluate(the_dataset_test_phn)
-    print('monte-carlo simulation, C = ', Capacity_simul)
+    # obj_ML_model_phn.compile(
+    #     optimizer=optimizer_2,
+    #     loss=the_loss_function_phn_accurate,
+    #     activation=obj_CNN_model.custom_actication,
+    #     phase_noise='y')
+    # Capacity_simul = obj_ML_model_phn.evaluate(the_dataset_test_phn)
+    # print('monte-carlo simulation, C = ', Capacity_simul)
 
 
+    def loss_function_time_test():
+        obj_loss_parallel_phase_noised_accurate = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
+                                                                                  SNR, P, N_c,
+                                                                                  N_scatterers, angular_spread_rad,
+                                                                                  wavelength,
+                                                                                  d, BATCHSIZE, phase_shift_stddiv,
+                                                                                  1, Nsymb,
+                                                                                  1,
+                                                                                  1)
+        the_loss_function_phn_accurate = obj_loss_parallel_phase_noised_accurate.capacity_calculation_for_frame_for_batch
+        obj_ML_model_phn.compile(
+            optimizer=optimizer_2,
+            loss=the_loss_function_phn_accurate,
+            activation=obj_CNN_model.custom_actication,
+            phase_noise='y')
+        Capacity_simul = obj_ML_model_phn.evaluate(the_dataset_test_phn)
+        print('monte-carlo simulation, C = ', Capacity_simul)
+
+
+    loss_function_time_test()
     # for tensorboard run this:
     # cd C:\Users\jabba\Google Drive\Main\Codes\ML_MIMO_new_project\PY_projects\convnet_transfer_learning_v1
     # tensorboard --logdir logs/fit/

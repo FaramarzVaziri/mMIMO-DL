@@ -1,4 +1,4 @@
-# when u copy from main, change verbose=2 and delete plots and remove tensorboard
+
 # Imports libs /////////////////////////////////////////////////////////////////////////////////////////////////////////
 import datetime
 import time
@@ -20,39 +20,23 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
-# tf.debugging.set_log_device_placement(True)
-
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
-    print('The main code for running on this computer')
+    print('The main code for running on ARC')
 
     print('tf version', tf.version.VERSION)
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240  # int(input("No. train samples: "))
+    train_dataset_size = 1024  # int(input("No. train samples: "))
     test_dataset_size = 1024  # int(input("No. test samples: "))
-    width_of_network = 1 # float(input("Network's width parameter: "))
-    BATCHSIZE = 32  # int(input("batch size: "))
-    L_rate = 1e-5  # float(input("inital lr: "))
+    width_of_network = 1  # float(input("Network's width parameter: "))
+    BATCHSIZE = 128  # int(input("batch size: "))
+    L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
     # tensorboard_log_frequency = 1
-
-    # The one that worked
-    # # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    # train_dataset_size = 102400  # int(input("No. train samples: "))
-    # test_dataset_size = 1024  # int(input("No. test samples: "))
-    # width_of_network = 1  # float(input("Network's width parameter: "))
-    # BATCHSIZE = 32  # int(input("batch size: "))
-    # L_rate = 1e-4  # float(input("inital lr: "))
-    # dropout_rate = .5  # float(input("dropout rate: "))
-    # precision_fixer = 1e-6  # float(input("precision fixer additive: "))
-    # tensorboard_log_frequency = 1
-    #
-
-    # PARAMETERS ///////////////////////////////////////////////////////////////////////////////////////////////////////
     N_b_a = 4
     N_b_rf = 2
     N_b_o = N_b_rf
@@ -60,10 +44,10 @@ if __name__ == '__main__':
     N_u_rf = 2
     N_u_o = N_u_rf
     N_s = 1
-    K = 4
+    K = 32
     SNR = 20.
     P = 100.
-    sigma2 = 1. #P / (10 ** (SNR / 10.))
+    sigma2 = 1.  # P / (10 ** (SNR / 10.))
     N_c = 5
     N_scatterers = 10
     angular_spread_rad = 0.1745  # 10deg
@@ -87,25 +71,24 @@ if __name__ == '__main__':
     PHN_innovation_std = np.sqrt( 4.0*np.pi**2*f_0**2 * 10**(L/10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
 
-    # dataset_name = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_training_ML.mat'
-    # dataset_for_testing_sohrabi = '/project/st-lampe-1/Faramarz/data/dataset/DS_for_py_for_testing_Sohrabi.mat'
-
     dataset_name = '/arc/project/st-lampe-1/Faramarz/datasets/DS_for_py_for_training_ML.mat'
     dataset_for_testing_sohrabi = '/arc/project/st-lampe-1/Faramarz/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
+    # dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
+    # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
+
     # Truncation and sampling of sums
-    truncation_ratio_keep = 2 / K
-    sampling_ratio_time_domain_keep = 4 / Nsymb
-    sampling_ratio_subcarrier_domain_keep = 2 / K
+    truncation_ratio_keep = 4/K
+    sampling_ratio_time_domain_keep = 4/Nsymb
+    sampling_ratio_subcarrier_domain_keep = 4/K
 
     print('STEP 1: Parameter initialization is done.')
-
     # GPU/CUDA info ////////////////////////////////////////////////////////////////////////////////////////////////////
     print('Some info about GPU:')
     from tensorflow.python.client import device_lib
 
     # print(device_lib.list_local_devices())
-    gpu_available = tf.config.list_physical_devices('GPU')
+    gpu_available = tf.test.is_gpu_available()
     print('is GPU available: ', gpu_available)
     is_cuda_gpu_available = tf.test.is_gpu_available(cuda_only=True)
     print('is_cuda_gpu_available: ', is_cuda_gpu_available)
@@ -149,6 +132,7 @@ if __name__ == '__main__':
     obj_ML_model = ML_model_class(model_dnn=the_CNN_model)
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
+    # tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
     print(the_CNN_model.summary())
     obj_ML_model.compile(
         optimizer=optimizer_1,
@@ -157,14 +141,13 @@ if __name__ == '__main__':
         phase_noise='n')
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity', factor=0.5, patience=4, min_lr=1e-12,
                                                      mode='min', verbose=1)
-    log_dir = "logs_step1/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch',
-                                                          profile_batch='5,6')
-
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, histogram_freq=0, update_freq='epoch')
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir, update_freq= 'epoch') # profile_batch=2
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    obj_ML_model.fit(the_dataset_train, epochs=10,  # 10
+    obj_ML_model.fit(the_dataset_train, epochs=50, #10
                      validation_data=the_dataset_test, callbacks=[reduce_lr],
                      validation_batch_size=BATCHSIZE, verbose=2)
 
@@ -175,7 +158,7 @@ if __name__ == '__main__':
     # In this stage, we do a phase noised training to accurately optimize the beamformer
     # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    # A. PHN dataset creation
+    # A. PHN-free dataset creation
     obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                     angular_spread_rad, wavelength, d, BATCHSIZE,
                                                     phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
@@ -215,30 +198,26 @@ if __name__ == '__main__':
         phase_noise='y')
     reduce_lrTF = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity', factor=0.5, patience=2, min_lr=1e-12,
                                                        mode='min', verbose=1)
-
-    log_dirTF = "logs_step_2/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-
-    tboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dirTF,
-                                                     histogram_freq=1,
-                                                     profile_batch='5,6')
-
+    log_dirTF = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # # log_dir = "/project/st-lampe-1/Faramarz/data/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # tensorboard_callbackTF = tf.keras.callbacks.TensorBoard(log_dirTF, update_freq='epoch')  # profile_batch=2
+    #
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
-    # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10, #50
-    #                      validation_data=the_dataset_test_phn,  callbacks=[reduce_lrTF],
-    #                      validation_batch_size=BATCHSIZE, verbose=1)
+    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=10,  # 50
+                         validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
+                         validation_batch_size=BATCHSIZE, verbose=2)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
 
+
     # F. Evaluation
-    obj_loss_parallel_phase_noised_accurate = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
-                                                                              P, N_c,
-                                                                              N_scatterers, angular_spread_rad,
-                                                                              wavelength,
-                                                                              d, BATCHSIZE, phase_shift_stddiv,
-                                                                              1, Nsymb,
-                                                                              1,
-                                                                              1)
+    obj_loss_parallel_phase_noised_accurate = paralle_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
+                                                                     N_scatterers, angular_spread_rad, wavelength,
+                                                                     d, BATCHSIZE, phase_shift_stddiv,
+                                                                     1, Nsymb,
+                                                                     1,
+                                                                     1)
     the_loss_function_phn_accurate = obj_loss_parallel_phase_noised_accurate.capacity_calculation_for_frame_for_batch
 
     obj_ML_model_phn.compile(
@@ -248,6 +227,7 @@ if __name__ == '__main__':
         phase_noise='y')
     Capacity_simul = obj_ML_model_phn.evaluate(the_dataset_test_phn)
     print('monte-carlo simulation, C = ', Capacity_simul)
+
 
     # for tensorboard run this:
     # cd C:\Users\jabba\Google Drive\Main\Codes\ML_MIMO_new_project\PY_projects\convnet_transfer_learning_v1

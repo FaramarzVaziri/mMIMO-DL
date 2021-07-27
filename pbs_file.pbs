@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l walltime=1:00:00,select=1:ncpus=1:ngpus=1:gpu_mem=32gb
+#PBS -l walltime=0:10:00,select=1:ncpus=1:ngpus=1:gpu_mem=32gb:mem=32gb
 #PBS -N FirstJobBasedOnVenv_Faramarz
 #PBS -m abe
 #PBS -M jabbarva@ece.ubc.ca
