@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
     print('STEP 7: Training in presence of phase noise has started.')
     end_time_one_and_half = time.time()
-    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=2,  # 50
+    obj_ML_model_phn.fit(the_dataset_train_phn, epochs=20,  # 50
                          validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
                          validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
