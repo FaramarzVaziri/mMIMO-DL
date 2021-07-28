@@ -1,6 +1,9 @@
+import math
 import numpy as np
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
+import jax.numpy as jnp
+from jax import jit, vmap
 
 class sequential_loss_phase_noised_class:
 
@@ -27,7 +30,6 @@ class sequential_loss_phase_noised_class:
         self.Nsymb = Nsymb
         self.sampling_ratio_time_domain_keep = sampling_ratio_time_domain_keep
         self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
-
 
     def cyclical_shift(self, Lambda_matrix, k, flip):
         if flip == True:  # k-q
@@ -92,9 +94,10 @@ class sequential_loss_phase_noised_class:
         R_X_k = tf.linalg.matmul(A_ns_k, A_ns_k, adjoint_a=False, adjoint_b=True)
         return R_X_k
 
+    @jit
     def Rx_calculation_forall_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K = bundeled_inputs_0
-        R_X_tmp = []#[None] * int(self.sampling_ratio_subcarrier_domain_keep * self.K)
+        R_X_tmp = []
         for k in sampled_K:
             R_X_tmp.append(self.Rx_calculation_per_k([V_D[k, :], W_D[k, :], H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
         R_X = tf.stack(R_X_tmp)
@@ -332,3 +335,5 @@ class sequential_loss_phase_noised_class:
         #
         # return -1.0*tf.reduce_mean(capacity_sequence_in_frame_forall_samples, axis=0), \
         #        capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples
+
+
