@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.experimental.numpy as tnp
 
 class sequential_loss_phase_noised_class:
 
@@ -56,6 +57,8 @@ class sequential_loss_phase_noised_class:
     
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H_k, Lambda_B_k, Lambda_U_k = bundeled_inputs_0
+
+        # T1 = tnp.matmul(tnp.matmul(Lambda_U_k, H_k), Lambda_B_k)
         T1 = tf.linalg.matmul(tf.linalg.matmul(Lambda_U_k, H_k), Lambda_B_k)
         return T1
 
@@ -69,10 +72,19 @@ class sequential_loss_phase_noised_class:
         Lambda_U_masked = tf.boolean_mask(self.cyclical_shift(Lambda_U, k, flip=True),
                                           mask=mask_of_ones, axis=0)
 
-        # todo- speed comment: Changing map_fn to for loop made it 5.8 times faster
+        # # todo- speed comment: Changing map_fn to for loop made it 5.8 times faster
+        # H_tilde_k = 0
+        # for k in range(int(self.K * self.truncation_ratio_keep)):
+        #     H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([H_masked[k,:], Lambda_B_masked[k,:], Lambda_U_masked[k,:]])
+
+        # todo- speed comment: Changing python slicing to tf.slicc made it ---- times faster
         H_tilde_k = 0
         for k in range(int(self.K * self.truncation_ratio_keep)):
-            H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([H_masked[k,:], Lambda_B_masked[k,:], Lambda_U_masked[k,:]])
+            H_tilde_k = H_tilde_k + self.H_tilde_k_calculation(
+                [tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]),
+                 tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]),
+                 tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
+
 
         T1 = tf.linalg.matmul(T0, H_tilde_k)
         T2 = tf.linalg.matmul(T1, V_RF)
@@ -82,13 +94,11 @@ class sequential_loss_phase_noised_class:
 
     def Rx_calculation_forall_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K = bundeled_inputs_0
-        R_X_tmp = []
+        R_X_tmp = [None] * int(self.sampling_ratio_subcarrier_domain_keep * self.K)
         for k in sampled_K:
-            R_X_tmp.append(self.Rx_calculation_per_k([V_D[k,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
+            R_X_tmp[k] = self.Rx_calculation_per_k([V_D[k, :], W_D[k, :], H, V_RF, W_RF, Lambda_B, Lambda_U, k])
         R_X = tf.stack(R_X_tmp)
         return R_X
-
-    # R_Q calculations /////////////////////////////////////////////////////////////////////////////////////////////////
 
     
     def non_zero_element_finder_for_H_hat(self, k, m, truncation_ratio_keep):
