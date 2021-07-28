@@ -7,6 +7,7 @@ import numpy as np
 # import cProfile, pstats, io
 from line_profiler import LineProfiler
 # import line_profiler
+# import tensorflow.experimental.numpy as tnp
 
 # tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
@@ -27,7 +28,7 @@ from loss_sequential_phase_noised import sequential_loss_phase_noised_class
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
-    # print('tf version', tf.version.VERSION)
+    print('tf version', tf.version.VERSION)
     # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 2  # int(input("No. train samples: "))
@@ -73,14 +74,14 @@ if __name__ == '__main__':
 
     dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
     dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
-    # # #
+
     # dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
     # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
-    truncation_ratio_keep = 2/K
-    sampling_ratio_time_domain_keep = 4/Nsymb
-    sampling_ratio_subcarrier_domain_keep = 2/K
+    truncation_ratio_keep = 1
+    sampling_ratio_time_domain_keep = 1
+    sampling_ratio_subcarrier_domain_keep = 1
 
     obj_dataset_test_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                    angular_spread_rad, wavelength, d, BATCHSIZE,
@@ -110,9 +111,9 @@ if __name__ == '__main__':
     obj_sequential_loss_phase_noised = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
                                                                      N_scatterers, angular_spread_rad, wavelength,
                                                                      d, BATCHSIZE, phase_shift_stddiv,
-                                                                     1, Nsymb,
-                                                                     1,
-                                                                     1)
+                                                                     truncation_ratio_keep, Nsymb,
+                                                                     sampling_ratio_time_domain_keep,
+                                                                     sampling_ratio_subcarrier_domain_keep)
 
 
     # profiling cyclical_shift
