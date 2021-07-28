@@ -72,11 +72,11 @@ if __name__ == '__main__':
     # print('PHN_innovation_std = ', PHN_innovation_std)
 
 
-    dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
-    dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
+    # dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
+    # dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
-    # dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
-    # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
+    dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
+    dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 1
@@ -116,7 +116,7 @@ if __name__ == '__main__':
                                                                      sampling_ratio_subcarrier_domain_keep)
 
 
-    # profiling cyclical_shift
+    # profiling cyclical_shift --------------------------------------------------------------
     LP_cyclical_shift = LineProfiler()
     LP_WRAPPER_cyclical_shift = LP_cyclical_shift(obj_sequential_loss_phase_noised.cyclical_shift)
     # dummy_run
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     LP_WRAPPER_cyclical_shift(Lambda_matrix=Lambda_U[0,0,:],k=1, flip=True)
     LP_cyclical_shift.print_stats(output_unit=1e-6)
 
-    # profiling non_zero_element_finder_for_H_tilde
+    # profiling non_zero_element_finder_for_H_tilde --------------------------------------------------------------
     LP_non_zero_element_finder_for_H_tilde = LineProfiler()
     LP_WRAPPER_non_zero_element_finder_for_H_tilde = LP_non_zero_element_finder_for_H_tilde(obj_sequential_loss_phase_noised.non_zero_element_finder_for_H_tilde)
     # dummy run
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     LP_WRAPPER_non_zero_element_finder_for_H_tilde(k = 1, truncation_ratio_keep = 1)
     LP_non_zero_element_finder_for_H_tilde.print_stats(output_unit=1e-6)
 
-    # profiling H_tilde_k_calculation
+    # profiling H_tilde_k_calculation --------------------------------------------------------------
     LP_H_tilde_k_calculation = LineProfiler()
     LP_WRAPPER_H_tilde_k_calculation = LP_H_tilde_k_calculation(obj_sequential_loss_phase_noised.H_tilde_k_calculation)
     # dummy run
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     LP_H_tilde_k_calculation.print_stats(output_unit=1e-6)
 
 
-    # profiling Rx_calculation_per_k
+    # profiling Rx_calculation_per_k --------------------------------------------------------------
     LP_Rx_calculation_per_k = LineProfiler()
     LP_WRAPPER_Rx_calculation_per_k = LP_Rx_calculation_per_k(obj_sequential_loss_phase_noised.Rx_calculation_per_k)
     # preparing inputs
@@ -161,11 +161,11 @@ if __name__ == '__main__':
 
 
 
-    # profiling Rx_calculation_forall_k
-    LP_Rx_calculation_forall_k = LineProfiler()
-    LP_WRAPPER_Rx_calculation_forall_k = LP_Rx_calculation_forall_k(obj_sequential_loss_phase_noised.Rx_calculation_forall_k)
+    # profiling Rx_calculation_forall_k --------------------------------------------------------------
+    # LP_Rx_calculation_forall_k = LineProfiler()
+    # LP_WRAPPER_Rx_calculation_forall_k = LP_Rx_calculation_forall_k(obj_sequential_loss_phase_noised.Rx_calculation_forall_k)
     # preparing inputs
-    # preparing inputs
+
     V_D = tf.complex(tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32),
                        tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32))
     W_D = tf.complex(tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32),
@@ -179,10 +179,10 @@ if __name__ == '__main__':
     # dummy run
     obj_sequential_loss_phase_noised.Rx_calculation_forall_k(inputs)
     # profiler run
-    LP_WRAPPER_Rx_calculation_forall_k(inputs)
-    LP_Rx_calculation_forall_k.print_stats(output_unit=1e-6)
+    # LP_WRAPPER_Rx_calculation_forall_k(inputs)
+    # LP_Rx_calculation_forall_k.print_stats(output_unit=1e-6)
 
-    # profiling non_zero_element_finder_for_H_hat
+    # profiling non_zero_element_finder_for_H_hat --------------------------------------------------------------
     LP_non_zero_element_finder_for_H_hat = LineProfiler()
     LP_WRAPPER_non_zero_element_finder_for_H_hat = LP_non_zero_element_finder_for_H_hat(obj_sequential_loss_phase_noised.non_zero_element_finder_for_H_hat)
     # dummy run
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     LP_WRAPPER_non_zero_element_finder_for_H_hat(k =1, m =0, truncation_ratio_keep=1)
     LP_non_zero_element_finder_for_H_hat.print_stats(output_unit=1e-6)
 
-    # profiling H_hat_m_k_calculation
+    # profiling H_hat_m_k_calculation --------------------------------------------------------------
     LP_H_hat_m_k_calculation = LineProfiler()
     LP_WRAPPER_H_hat_m_k_calculation = LP_H_hat_m_k_calculation(obj_sequential_loss_phase_noised.H_hat_m_k_calculation)
     # dummy run
@@ -200,7 +200,9 @@ if __name__ == '__main__':
     LP_WRAPPER_H_hat_m_k_calculation([H_tilde_0_complex[0,0,:], Lambda_B[0,0,:], Lambda_U[0,0,:]])
     LP_H_hat_m_k_calculation.print_stats(output_unit=1e-6)
 
-    # # profiling
+
+
+    # # profiling --------------------------------------------------------------
     # LP_ = LineProfiler()
     # LP_WRAPPER_ = LP_(obj_sequential_loss_phase_noised.)
     # dummy run
