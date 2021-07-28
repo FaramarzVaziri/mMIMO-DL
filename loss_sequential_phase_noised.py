@@ -72,15 +72,19 @@ class sequential_loss_phase_noised_class:
         Lambda_U_masked = tf.boolean_mask(self.cyclical_shift(Lambda_U, k, flip=True),
                                           mask=mask_of_ones, axis=0)
 
-        # # todo- speed comment: Changing map_fn to for loop made it 5.8 times faster
+        # # todo- speed comment: Changing map_fn to for loop made it 5.8 times faster than mpa_fn
         # H_tilde_k = 0
         # for k in range(int(self.K * self.truncation_ratio_keep)):
         #     H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([H_masked[k,:], Lambda_B_masked[k,:], Lambda_U_masked[k,:]])
 
-        # todo- speed comment: Changing python slicing to tf.slice made it ---- times faster
-        H_tilde_k = 0
-        for k in range(int(self.K * self.truncation_ratio_keep)):
-            H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]), tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]), tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
+        # # todo- speed comment: Changing python slicing to tf.slice made it 7 times faster than map_fn
+        # H_tilde_k = 0
+        # for k in range(int(self.K * self.truncation_ratio_keep)):
+        #     H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]), tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]), tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
+        #
+
+        bundeled_inputs_1 = [H_masked, Lambda_B_masked, Lambda_U_masked]
+        H_tilde_k = tf.reduce_sum(tf.map_fn(self.H_tilde_k_calculation, bundeled_inputs_1, fn_output_signature=tf.complex64, parallel_iterations=int(self.K * self.truncation_ratio_keep)), axis=0)
 
         T1 = tf.linalg.matmul(T0, H_tilde_k)
         T2 = tf.linalg.matmul(T1, V_RF)
