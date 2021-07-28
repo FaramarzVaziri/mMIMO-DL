@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 
-
 class sequential_loss_phase_noised_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
@@ -57,8 +56,7 @@ class sequential_loss_phase_noised_class:
     
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H_k, Lambda_B_k, Lambda_U_k = bundeled_inputs_0
-        T0 = tf.linalg.matmul(Lambda_U_k, H_k)
-        T1 = tf.linalg.matmul(T0, Lambda_B_k)
+        T1 = tf.linalg.matmul(tf.linalg.matmul(Lambda_U_k, H_k), Lambda_B_k)
         return T1
 
     def Rx_calculation_per_k(self, bundeled_inputs_0):
