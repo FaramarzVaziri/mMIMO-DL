@@ -94,9 +94,9 @@ class sequential_loss_phase_noised_class:
 
     def Rx_calculation_forall_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K = bundeled_inputs_0
-        R_X_tmp = [None] * int(self.sampling_ratio_subcarrier_domain_keep * self.K)
+        R_X_tmp = []#[None] * int(self.sampling_ratio_subcarrier_domain_keep * self.K)
         for k in sampled_K:
-            R_X_tmp[k] = self.Rx_calculation_per_k([V_D[k, :], W_D[k, :], H, V_RF, W_RF, Lambda_B, Lambda_U, k])
+            R_X_tmp.append(self.Rx_calculation_per_k([V_D[k, :], W_D[k, :], H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
         R_X = tf.stack(R_X_tmp)
         return R_X
 
