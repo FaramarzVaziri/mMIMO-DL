@@ -22,6 +22,8 @@ from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
 from dataset_generator import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
+from loss_sequential_phase_noised import sequential_loss_phase_noised_class
+
 # from profiling import profiling_class
 
 
@@ -36,10 +38,10 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 8  # int(input("No. train samples: "))
-    test_dataset_size = 8  # int(input("No. test samples: "))
+    train_dataset_size = 1024  # int(input("No. train samples: "))
+    test_dataset_size = 128  # int(input("No. test samples: "))
     width_of_network = 1  # float(input("Network's width parameter: "))
-    BATCHSIZE = 4  # int(input("batch size: "))
+    BATCHSIZE = 32  # int(input("batch size: "))
     L_rate = 1e-4  # float(input("inital lr: "))
     dropout_rate = .5  # float(input("dropout rate: "))
     precision_fixer = 1e-6  # float(input("precision fixer additive: "))
@@ -170,7 +172,7 @@ if __name__ == '__main__':
 
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
-    # obj_ML_model.fit(the_dataset_train, epochs=2, #10
+    # obj_ML_model.fit(the_dataset_train, epochs=20, #10
     #                  validation_data=the_dataset_test, callbacks=[reduce_lr],
     #                  validation_batch_size=BATCHSIZE, verbose=1)
 
