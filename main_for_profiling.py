@@ -72,24 +72,32 @@ if __name__ == '__main__':
     # print('PHN_innovation_std = ', PHN_innovation_std)
 
 
-    # dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
-    # dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
-
-    dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
-    dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 1
     sampling_ratio_time_domain_keep = 1
     sampling_ratio_subcarrier_domain_keep = 1
+    try:
+        dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
+        obj_dataset_test_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
+                                                       angular_spread_rad, wavelength, d, BATCHSIZE,
+                                                       phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
+                                                       fc,
+                                                       c, PHN_innovation_std, dataset_name, test_dataset_size)
+        _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator(mode="test",
+                                                                                                     phase_noise="y")
+        print('STEP 5: Dataset creation is done.')
+    except:
+        dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
+        obj_dataset_test_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
+                                                       angular_spread_rad, wavelength, d, BATCHSIZE,
+                                                       phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
+                                                       fc,
+                                                       c, PHN_innovation_std, dataset_name, test_dataset_size)
+        _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator(mode="test",
+                                                                                                     phase_noise="y")
+        print('STEP 5: Dataset creation is done.')
 
-    obj_dataset_test_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
-                                                   angular_spread_rad, wavelength, d, BATCHSIZE,
-                                                   phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
-                                                   fc,
-                                                   c, PHN_innovation_std, dataset_name, test_dataset_size)
-    _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator(mode="test", phase_noise="y")
-    print('STEP 5: Dataset creation is done.')
 
 
     # The profiling starts from here /////////////////////////////////////////////////////////////////////////////////////
@@ -178,9 +186,12 @@ if __name__ == '__main__':
     inputs = [ V_D, W_D, H_tilde_0_complex[0,:], V_RF, W_RF, Lambda_B[0,0,:], Lambda_U[0,0,:], sampled_K]
     # dummy run
     obj_sequential_loss_phase_noised.Rx_calculation_forall_k(inputs)
+    LP_Rx_calculation_forall_k = LineProfiler()
+    LP_WRAPPER_Rx_calculation_forall_k = LP_Rx_calculation_forall_k(obj_sequential_loss_phase_noised.Rx_calculation_forall_k)
     # profiler run
-    # LP_WRAPPER_Rx_calculation_forall_k(inputs)
-    # LP_Rx_calculation_forall_k.print_stats(output_unit=1e-6)
+    LP_WRAPPER_Rx_calculation_forall_k(inputs)
+    LP_Rx_calculation_forall_k.print_stats(output_unit=1e-6)
+
 
     # profiling non_zero_element_finder_for_H_hat --------------------------------------------------------------
     LP_non_zero_element_finder_for_H_hat = LineProfiler()
