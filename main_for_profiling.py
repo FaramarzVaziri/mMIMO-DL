@@ -4,6 +4,8 @@ import time
 import scipy.io as sio
 import tensorflow as tf
 import numpy as np
+
+
 # import cProfile, pstats, io
 from line_profiler import LineProfiler
 # import line_profiler
@@ -170,10 +172,9 @@ if __name__ == '__main__':
 
 
     # profiling Rx_calculation_forall_k --------------------------------------------------------------
-    # LP_Rx_calculation_forall_k = LineProfiler()
-    # LP_WRAPPER_Rx_calculation_forall_k = LP_Rx_calculation_forall_k(obj_sequential_loss_phase_noised.Rx_calculation_forall_k)
+    LP_Rx_calculation_forall_k = LineProfiler()
+    LP_WRAPPER_Rx_calculation_forall_k = LP_Rx_calculation_forall_k(obj_sequential_loss_phase_noised.Rx_calculation_forall_k)
     # preparing inputs
-
     V_D = tf.complex(tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32),
                        tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32))
     W_D = tf.complex(tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32),
@@ -183,11 +184,9 @@ if __name__ == '__main__':
     W_RF = tf.complex(tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32),
                       tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32))
     sampled_K = np.random.choice(K, int(sampling_ratio_subcarrier_domain_keep * K), replace=False)
-    inputs = [ V_D, W_D, H_tilde_0_complex[0,:], V_RF, W_RF, Lambda_B[0,0,:], Lambda_U[0,0,:], sampled_K]
+    inputs = [V_D, W_D, H_tilde_0_complex[0,:], V_RF, W_RF, Lambda_B[0,0,:], Lambda_U[0,0,:], sampled_K]
     # dummy run
     obj_sequential_loss_phase_noised.Rx_calculation_forall_k(inputs)
-    LP_Rx_calculation_forall_k = LineProfiler()
-    LP_WRAPPER_Rx_calculation_forall_k = LP_Rx_calculation_forall_k(obj_sequential_loss_phase_noised.Rx_calculation_forall_k)
     # profiler run
     LP_WRAPPER_Rx_calculation_forall_k(inputs)
     LP_Rx_calculation_forall_k.print_stats(output_unit=1e-6)

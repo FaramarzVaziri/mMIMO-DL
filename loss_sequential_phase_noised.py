@@ -2,8 +2,6 @@ import math
 import numpy as np
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
-import jax.numpy as jnp
-from jax import jit, vmap
 
 class sequential_loss_phase_noised_class:
 
@@ -79,14 +77,15 @@ class sequential_loss_phase_noised_class:
         # for k in range(int(self.K * self.truncation_ratio_keep)):
         #     H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([H_masked[k,:], Lambda_B_masked[k,:], Lambda_U_masked[k,:]])
 
-        # # todo- speed comment: Changing python slicing to tf.slice made it 7 times faster than map_fn
-        # H_tilde_k = 0
-        # for k in range(int(self.K * self.truncation_ratio_keep)):
-        #     H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]), tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]), tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
-        #
+        # todo- speed comment: Changing python slicing to tf.slice made it 7 times faster than map_fn
+        H_tilde_k = 0
+        for k in range(int(self.K * self.truncation_ratio_keep)):
+            H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]), tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]), tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
 
-        bundeled_inputs_1 = [H_masked, Lambda_B_masked, Lambda_U_masked]
-        H_tilde_k = tf.reduce_sum(tf.map_fn(self.H_tilde_k_calculation, bundeled_inputs_1, fn_output_signature=tf.complex64, parallel_iterations=int(self.K * self.truncation_ratio_keep)), axis=0)
+
+        # # impl with map_fn
+        # bundeled_inputs_1 = [H_masked, Lambda_B_masked, Lambda_U_masked]
+        # H_tilde_k = tf.reduce_sum(tf.map_fn(self.H_tilde_k_calculation, bundeled_inputs_1, fn_output_signature=tf.complex64, parallel_iterations=int(self.K * self.truncation_ratio_keep)), axis=0)
 
         T1 = tf.linalg.matmul(T0, H_tilde_k)
         T2 = tf.linalg.matmul(T1, V_RF)
@@ -94,12 +93,16 @@ class sequential_loss_phase_noised_class:
         R_X_k = tf.linalg.matmul(A_ns_k, A_ns_k, adjoint_a=False, adjoint_b=True)
         return R_X_k
 
-    @jit
     def Rx_calculation_forall_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, sampled_K = bundeled_inputs_0
         R_X_tmp = []
+
         for k in sampled_K:
             R_X_tmp.append(self.Rx_calculation_per_k([V_D[k, :], W_D[k, :], H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
+
+        # # todo - speed comment: changing python slice to tf.slice made it 0% faster
+        # for k in sampled_K:
+        #     R_X_tmp.append(self.Rx_calculation_per_k([tf.slice(V_D, [k, 0, 0], [1, self.N_b_rf, self.N_s]), tf.slice(W_D, [k, 0, 0], [1, self.N_u_rf, self.N_s]), H, V_RF, W_RF, Lambda_B, Lambda_U, k]))
         R_X = tf.stack(R_X_tmp)
         return R_X
 
