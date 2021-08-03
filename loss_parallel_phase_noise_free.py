@@ -2,7 +2,7 @@ import tensorflow as tf
 
 class loss_parallel_phase_noise_free_class:
 
-    def __init__(self,N_b_a,N_b_rf,N_u_a,N_u_rf,N_s,K,SNR,P,N_c,N_scatterers,angular_spread_rad,wavelength,d,BATCHSIZE,phase_shift_stddiv):
+    def __init__(self,N_b_a,N_b_rf,N_u_a,N_u_rf,N_s,K,SNR,P,N_c,N_scatterers,angular_spread_rad,wavelength,d,BATCHSIZE):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -18,7 +18,6 @@ class loss_parallel_phase_noise_free_class:
         self.wavelength = wavelength
         self.d = d
         self.BATCHSIZE = BATCHSIZE
-        self.phase_shift_stddiv = phase_shift_stddiv
 
     @tf.function
     def C_per_sample_per_k(self,bundeled_inputs):

@@ -17,7 +17,7 @@ if tf.test.gpu_device_name() == '/device:GPU:0':
 from CNN_model import CNN_model_class
 from ML_model import ML_model_class
 from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
-from dataset_generator import dataset_generator_class
+from dataset_generator_from_file import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
 

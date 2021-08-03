@@ -4,32 +4,15 @@ from tensorflow.keras.layers import Dense, Conv3D, Reshape, MaxPooling3D, BatchN
 
 
 class CNN_model_class:
-    def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, mat_fname,
-                 dataset_size, width_parameter, dropout_rate):
+    def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, P, BATCHSIZE, width_parameter, dropout_rate):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
         self.N_u_rf = N_u_rf
         self.N_s = N_s
         self.K = K
-        self.SNR = SNR
         self.P = P
-        self.sigma2 = self.P / (10 ** (self.SNR / 10.))
-        self.N_c = N_c
-        self.N_scatterers = N_scatterers
-        self.angular_spread_rad = angular_spread_rad  # 10deg
-        self.wavelength = wavelength
-        self.d = d
         self.BATCHSIZE = BATCHSIZE
-        self.phase_shift_stddiv = phase_shift_stddiv
-        self.truncation_ratio_keep = truncation_ratio_keep
-        self.Nsymb = Nsymb
-        self.Ts = Ts
-        self.fc = fc
-        self.c = c
-        self.mat_fname = mat_fname
-        self.dataset_size = dataset_size
         self.width_parameter = width_parameter
         self.dropout_rate = dropout_rate
 

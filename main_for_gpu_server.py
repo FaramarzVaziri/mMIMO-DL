@@ -18,7 +18,7 @@ if tf.test.gpu_device_name() == '/device:GPU:0':
 from CNN_model import CNN_model_class
 from ML_model import ML_model_class
 from Sohrabi_s_method_tester import Sohrabi_s_method_tester_class
-from dataset_generator import dataset_generator_class
+from dataset_generator_from_file import dataset_generator_class
 from loss_parallel_phase_noise_free import loss_parallel_phase_noise_free_class
 from loss_parallel_phase_noised import paralle_loss_phase_noised_class
 from loss_sequential_phase_noised import sequential_loss_phase_noised_class
@@ -105,7 +105,7 @@ if __name__ == '__main__':
                                                        phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
                                                        fc,
                                                        c, PHN_innovation_std, dataset_name, test_dataset_size)
-        _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator(mode="test",
+        _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator_from_file(mode="test",
                                                                                                      phase_noise="y")
         print('STEP 5: Dataset creation is done.')
     except:
@@ -115,7 +115,7 @@ if __name__ == '__main__':
                                                        phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
                                                        fc,
                                                        c, PHN_innovation_std, dataset_name, test_dataset_size)
-        _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator(mode="test",
+        _, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U = obj_dataset_test_phn.dataset_generator_from_file(mode="test",
                                                                                                      phase_noise="y")
         print('STEP 5: Dataset creation is done.')
 
@@ -142,14 +142,14 @@ if __name__ == '__main__':
                                                 angular_spread_rad, wavelength, d, BATCHSIZE,
                                                 phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
                                                 c, PHN_innovation_std, dataset_name, train_dataset_size)
-    the_dataset_train, _, _, _, _ = obj_dataset_train.dataset_generator(mode="train", phase_noise="n")
+    the_dataset_train, _, _, _, _ = obj_dataset_train.dataset_generator_from_file(mode="train", phase_noise="n")
     # PHNed dataset creation
     obj_dataset_test_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                    angular_spread_rad, wavelength, d, BATCHSIZE,
                                                    phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
                                                    fc,
                                                    c, PHN_innovation_std, dataset_name, test_dataset_size)
-    the_dataset_test_phn, _, _, _, _ = obj_dataset_test_phn.dataset_generator(mode="test", phase_noise="y")
+    the_dataset_test_phn, _, _, _, _ = obj_dataset_test_phn.dataset_generator_from_file(mode="test", phase_noise="y")
     print('STEP 2: Dataset creation is done.')
 
     # B. ML model creation
@@ -215,7 +215,7 @@ if __name__ == '__main__':
                                                     phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
                                                     fc,
                                                     c, PHN_innovation_std, dataset_name, train_dataset_size)
-    the_dataset_train_phn, _, _, _, _ = obj_dataset_train_phn.dataset_generator(mode="train",
+    the_dataset_train_phn, _, _, _, _ = obj_dataset_train_phn.dataset_generator_from_file(mode="train",
                                                                                 phase_noise="y")
 
     # C. Loss function creation (sampled)
