@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 
+
 class sequential_loss_phase_noised_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
@@ -37,8 +38,10 @@ class sequential_loss_phase_noised_class:
 
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
-        B_orig = int(self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
-        ZI = tf.math.floormod(B_orig + tf.range(int(self.K * z)), self.K)  # zero indices for k-rolled fft sequence of phase noise
+        B_orig = int(
+            self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
+        ZI = tf.math.floormod(B_orig + tf.range(int(self.K * z)),
+                              self.K)  # zero indices for k-rolled fft sequence of phase noise
         # ZI = tf.math.floormod(B_orig + np.array(range(int(self.K * z))), self.K)  # zero indices for k-rolled fft sequence of phase noise
         ZI = tf.cast(ZI, dtype=tf.int64)
         s = ZI.shape
@@ -54,7 +57,6 @@ class sequential_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H_k, Lambda_B_k, Lambda_U_k = bundeled_inputs_0
 
@@ -80,8 +82,10 @@ class sequential_loss_phase_noised_class:
         # todo- speed comment: Changing python slicing to tf.slice made it 7 times faster than map_fn
         H_tilde_k = 0
         for k in range(int(self.K * self.truncation_ratio_keep)):
-            H_tilde_k = H_tilde_k + self.H_tilde_k_calculation([tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]), tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]), tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
-
+            H_tilde_k = H_tilde_k + self.H_tilde_k_calculation(
+                [tf.slice(H_masked, [k, 0, 0], [1, self.N_u_a, self.N_b_a]),
+                 tf.slice(Lambda_B_masked, [k, 0, 0], [1, self.N_b_a, self.N_b_a]),
+                 tf.slice(Lambda_U_masked, [k, 0, 0], [1, self.N_u_a, self.N_u_a])])
 
         # # impl with map_fn
         # bundeled_inputs_1 = [H_masked, Lambda_B_masked, Lambda_U_masked]
@@ -106,7 +110,6 @@ class sequential_loss_phase_noised_class:
         R_X = tf.stack(R_X_tmp)
         return R_X
 
-    
     def non_zero_element_finder_for_H_hat(self, k, m, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int(
@@ -170,7 +173,6 @@ class sequential_loss_phase_noised_class:
         R = self.sigma2 * tf.linalg.matmul(C_m_k, C_m_k, adjoint_a=False, adjoint_b=True)
         return R
 
-    
     def Rq_calculation_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0
 

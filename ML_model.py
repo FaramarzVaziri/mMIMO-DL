@@ -45,7 +45,7 @@ class ML_model_class(tf.keras.Model):
             return {"neg_capacity_train_loss": loss_metric.result()}
         else:
             # H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset
-            csi_original, csi_tilde_0, _, _ = inputs0
+            csi_original, csi_tilde_0 = inputs0
             with tf.GradientTape() as tape:
                 # Unpack the data
                 V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(csi_tilde_0)

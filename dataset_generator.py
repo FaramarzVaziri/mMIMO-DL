@@ -48,8 +48,7 @@ class dataset_generator_class:
     @tf.function
     def PHN_forall_RF(self, theta):
         #print('should be N_rf but is: ', theta.shape)
-        T0= tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32),
-                                        axis=0))
+        T0 = tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32), axis=0))
         return T0
 
     @tf.function
@@ -90,9 +89,8 @@ class dataset_generator_class:
         N_frames = self.dataset_size
         Input = Nrf*tf.ones(shape=[N_frames], dtype= tf.int32)
         DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K = tf.map_fn(self.Wiener_phase_noise_generator_Ruoyu_for_one_frame_per_RF, Input,
-                                                    fn_output_signature= tf.complex64,
-                                                    parallel_iterations= N_frames)
-        DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf = tf.transpose(DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K, perm= [0, 1,3,2])
+                                                    fn_output_signature= tf.complex64)
+        DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf = tf.transpose(DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K, perm= [0,1,3,2])
         return DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf
 
     @tf.function
@@ -103,7 +101,7 @@ class dataset_generator_class:
         # UE
         PHN_U_DFT_domain_samples_K_Nrf_train = self.PHN_for_all_frames(self.N_u_rf)
         Lambda_U = self.PHN_forall_RF_forall_K_forall_symbols_forall_samples(PHN_U_DFT_domain_samples_K_Nrf_train)
-        return Lambda_B, Lambda_U
+        return tf.sparse.from_dense(Lambda_B), tf.sparse.from_dense(Lambda_U)
 
     # # the following phase noise is based on R. Zhang, B. Shim and H. Zhao, "Downlink Compressive Channel Estimation With Phase Noise in Massive MIMO Systems," in IEEE Transactions on Communications, vol. 68, no. 9, pp. 5534-5548, Sept. 2020, doi: 10.1109/TCOMM.2020.2998141.
     # def Wiener_phase_noise_generator_Ruoyu(self, N_rf):
@@ -238,17 +236,16 @@ class dataset_generator_class:
 
         H_complex_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
         # GENERATING PHASE NOISE DATASET
-        # Lambda_B is [1024 samps, 2 symbs, 4 K, 8 Nt, 8 Nr]
         Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
         Lambda_B_dataset = tf.data.Dataset.from_tensor_slices(Lambda_B)
         Lambda_U_dataset = tf.data.Dataset.from_tensor_slices(Lambda_U)
 
         # GENERATING H_tilde_0
-        Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_B,
+        Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(tf.sparse.to_dense(Lambda_B),
                                                                begin=[0, 0, 0, 0, 0],
                                                                size=[self.dataset_size, 1, self.K, self.N_b_a,
                                                                      self.N_b_a]))
-        Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_U,
+        Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(tf.sparse.to_dense(Lambda_U),
                                                                begin=[0, 0, 0, 0, 0],
                                                                size=[self.dataset_size, 1, self.K, self.N_u_a,
                                                                      self.N_u_a]))
