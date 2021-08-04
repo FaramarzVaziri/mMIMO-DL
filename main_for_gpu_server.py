@@ -183,7 +183,7 @@ if __name__ == '__main__':
                      validation_data=the_dataset_test,
                      callbacks=[reduce_lr],
                      validation_freq=10,
-                     verbose=1,
+                     verbose=2,
                      workers = 8,
                      use_multiprocessing= True)
 
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     end_time_one_and_half = time.time()
     # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=2,  # 50
     #                      validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
-    #                      validation_batch_size=BATCHSIZE, verbose=1)
+    #                      validation_batch_size=BATCHSIZE, verbose=2)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
 
