@@ -39,9 +39,9 @@ if __name__ == '__main__':
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 102400
     test_dataset_size = 1024
-    width_of_network = 0.5
+    width_of_network = 2
     BATCHSIZE = 128  #
-    L_rate = 1e-6
+    L_rate = 1e-5
     dropout_rate = .5
     precision_fixer = 1e-6
     # tensorboard_log_frequency = 1
