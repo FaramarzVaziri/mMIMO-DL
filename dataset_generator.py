@@ -48,7 +48,8 @@ class dataset_generator_class:
     @tf.function
     def PHN_forall_RF(self, theta):
         #print('should be N_rf but is: ', theta.shape)
-        T0 = tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32), axis=0))
+        T0= tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32),
+                                        axis=0))
         return T0
 
     @tf.function
@@ -86,11 +87,12 @@ class dataset_generator_class:
 
     @tf.function
     def PHN_for_all_frames(self, Nrf):
-        N_frames = self.dataset_size
+        N_frames = self.BATCHSIZE
         Input = Nrf*tf.ones(shape=[N_frames], dtype= tf.int32)
         DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K = tf.map_fn(self.Wiener_phase_noise_generator_Ruoyu_for_one_frame_per_RF, Input,
-                                                    fn_output_signature= tf.complex64)
-        DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf = tf.transpose(DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K, perm= [0,1,3,2])
+                                                    fn_output_signature= tf.complex64,
+                                                    parallel_iterations= N_frames)
+        DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf = tf.transpose(DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K, perm= [0, 1,3,2])
         return DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf
 
     @tf.function
@@ -101,7 +103,7 @@ class dataset_generator_class:
         # UE
         PHN_U_DFT_domain_samples_K_Nrf_train = self.PHN_for_all_frames(self.N_u_rf)
         Lambda_U = self.PHN_forall_RF_forall_K_forall_symbols_forall_samples(PHN_U_DFT_domain_samples_K_Nrf_train)
-        return tf.sparse.from_dense(Lambda_B), tf.sparse.from_dense(Lambda_U)
+        return Lambda_B, Lambda_U
 
     # # the following phase noise is based on R. Zhang, B. Shim and H. Zhao, "Downlink Compressive Channel Estimation With Phase Noise in Massive MIMO Systems," in IEEE Transactions on Communications, vol. 68, no. 9, pp. 5534-5548, Sept. 2020, doi: 10.1109/TCOMM.2020.2998141.
     # def Wiener_phase_noise_generator_Ruoyu(self, N_rf):
@@ -135,7 +137,6 @@ class dataset_generator_class:
 
 
     @tf.function
-    @tf.autograph.experimental.do_not_convert
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int(
@@ -211,12 +212,32 @@ class dataset_generator_class:
     # so, Lambda_B/U have Nsymb times more samples
 
     @tf.function
-    @tf.autograph.experimental.do_not_convert
+    def dataset_mapper(self, H_complex):
+        Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
+        Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_B,
+                                                               begin=[0, 0, 0, 0, 0],
+                                                               size=[self.BATCHSIZE, 1, self.K, self.N_b_a,
+                                                                     self.N_b_a]))
+        Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_U,
+                                                               begin=[0, 0, 0, 0, 0],
+                                                               size=[self.BATCHSIZE, 1, self.K, self.N_u_a,
+                                                                     self.N_u_a]))
+        bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
+        H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
+        H_tilde_0 = []
+        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
+        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
+        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
+
+        return H_complex, H_tilde_0, Lambda_B, Lambda_U
+
+    @tf.function
     def dataset_generator(self, mode, phase_noise):
 
         mat_contents = sio.loadmat(self.mat_fname)
 
         H = np.zeros(shape=[self.dataset_size, self.K, self.N_u_a, self.N_b_a, 2], dtype=np.float32)
+
         if (mode == "train"):
             var_name_real = "H_real_" + "train"
             H[:, :, :, :, 0] = np.transpose(mat_contents[var_name_real], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :,
@@ -224,52 +245,25 @@ class dataset_generator_class:
             var_name_imag = "H_imag_" + "train"
             H[:, :, :, :, 1] = np.transpose(mat_contents[var_name_imag], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :,
                                :]
+            H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+            my_dataset = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(H_complex),
+                                              tf.data.Dataset.from_tensor_slices(H)))
+            my_dataset = my_dataset.cache()
+            my_dataset = my_dataset.batch(self.BATCHSIZE)
+
         else:
             var_name_real = "H_real_" + "test"
-            H[:, :, :, :, 0] = np.transpose(mat_contents[var_name_real], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :,
-                               :]
+            H[:, :, :, :, 0] = \
+                np.transpose(mat_contents[var_name_real], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :, :]
             var_name_imag = "H_imag_" + "test"
-            H[:, :, :, :, 1] = np.transpose(mat_contents[var_name_imag], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :,
-                               :]
+            H[:, :, :, :, 1] = \
+                np.transpose(mat_contents[var_name_imag], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :, :]
+            H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+            my_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
+            # my_dataset = my_dataset.cache()
+            my_dataset = my_dataset.batch(self.BATCHSIZE)
+            my_dataset = my_dataset.map(self.dataset_mapper, num_parallel_calls=tf.data.AUTOTUNE )
 
-        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-
-        H_complex_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
-        # GENERATING PHASE NOISE DATASET
-        Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
-        Lambda_B_dataset = tf.data.Dataset.from_tensor_slices(Lambda_B)
-        Lambda_U_dataset = tf.data.Dataset.from_tensor_slices(Lambda_U)
-
-        # GENERATING H_tilde_0
-        Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(tf.sparse.to_dense(Lambda_B),
-                                                               begin=[0, 0, 0, 0, 0],
-                                                               size=[self.dataset_size, 1, self.K, self.N_b_a,
-                                                                     self.N_b_a]))
-        Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(tf.sparse.to_dense(Lambda_U),
-                                                               begin=[0, 0, 0, 0, 0],
-                                                               size=[self.dataset_size, 1, self.K, self.N_u_a,
-                                                                     self.N_u_a]))
-        bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
-
-        H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
-        H_tilde_0 = []
-        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
-        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
-        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
-        H_tilde_0_dataset = tf.data.Dataset.from_tensor_slices(H_tilde_0)
-
-
-        if (phase_noise == "y"):
-            my_dataset = tf.data.Dataset.zip((H_complex_dataset, H_tilde_0_dataset, Lambda_B_dataset, Lambda_U_dataset))
-        else:
-            my_dataset = tf.data.Dataset.zip((H_complex_dataset, H_tilde_0_dataset))
-            H_tilde_0_complex = []
-            Lambda_B=[]
-            Lambda_U=[]
-
-
-        my_dataset = my_dataset.cache()
-        my_dataset = my_dataset.batch(self.BATCHSIZE)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        my_dataset = my_dataset.prefetch(self.BATCHSIZE)
-        return my_dataset, H_tilde_0_complex, H_complex, Lambda_B, Lambda_U
+        my_dataset = my_dataset.prefetch(AUTOTUNE)
+        return my_dataset

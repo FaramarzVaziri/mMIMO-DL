@@ -3,7 +3,7 @@ import scipy.io as sio
 import tensorflow as tf
 
 from CNN_model import CNN_model_class
-from loss_parallel_phase_noised import paralle_loss_phase_noised_class
+from loss_parallel_phase_noised import parallel_loss_phase_noised_class
 
 
 class Sohrabi_s_method_tester_class:
@@ -39,7 +39,7 @@ class Sohrabi_s_method_tester_class:
     @tf.function
     @tf.autograph.experimental.do_not_convert
     def capacity_in_presence_of_phase_noise_Sohrabi(self):
-        obj_loss_parallel_phase_noised_2 = paralle_loss_phase_noised_class(self.N_b_a, self.N_b_rf, self.N_u_a,
+        obj_loss_parallel_phase_noised_2 = parallel_loss_phase_noised_class(self.N_b_a, self.N_b_rf, self.N_u_a,
                                                                            self.N_u_rf, self.N_s, self.K, self.SNR,
                                                                            self.P,
                                                                            self.N_c, self.N_scatterers,
