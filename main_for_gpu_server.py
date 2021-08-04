@@ -9,10 +9,10 @@ import numpy as np
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
-print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',
-      tf.config.list_physical_devices('GPU'))
-if tf.test.gpu_device_name() == '/device:GPU:0':
-    tf.device('/device:GPU:0')
+# print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> the device name: ',
+#       tf.config.list_physical_devices('GPU'))
+# if tf.test.gpu_device_name() == '/device:GPU:0':
+#     tf.device('/device:GPU:0')
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
 from CNN_model import CNN_model_class
@@ -37,10 +37,10 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240
-    test_dataset_size = 128
+    train_dataset_size = 102400
+    test_dataset_size = 1024
     width_of_network = 0.5
-    BATCHSIZE = 8  #
+    BATCHSIZE = 128  #
     L_rate = 1e-3
     dropout_rate = .5
     precision_fixer = 1e-6
@@ -183,7 +183,7 @@ if __name__ == '__main__':
                      validation_data=the_dataset_test,
                      callbacks=[reduce_lr],
                      validation_freq=10,
-                     verbose=2,
+                     verbose=1,
                      workers = 8,
                      use_multiprocessing= True)
 
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     end_time_one_and_half = time.time()
     # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=2,  # 50
     #                      validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
-    #                      validation_batch_size=BATCHSIZE, verbose=2)
+    #                      validation_batch_size=BATCHSIZE, verbose=1)
     end_time_2 = time.time()
     print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
 
