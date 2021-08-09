@@ -292,8 +292,8 @@ class CNN_model_class:
                 T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
                 T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
                 # denum = tf.add(denum , tf.linalg.trace(T1))
-                denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16,
-                                                               1e-16))  ####################################################### numeric precision flaw
+                denum = (tf.linalg.trace(T1))#, tf.complex(1e-16,
+                                                    #           1e-16))  ####################################################### numeric precision flaw
                 # denum = tf.linalg.trace(T1)
                 # V_D_new_forall_samples.append(tf.divide( tf.multiply(V_D_cplx[ij,:,:,:] , tf.cast(tf.sqrt(P) ,dtype=tf.complex64)) , tf.sqrt(denum)))
                 V_D_new_per_sample.append(

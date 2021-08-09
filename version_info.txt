@@ -1,10 +1,11 @@
--I totally abandoned the idea of training using the phase noise aware loss function
-
--Instead, I just consider H as the inputs and train using the phase noise free loss function
 
 -to deal with the large Lambda matrix issue (102400*50*4*4*4*32/1e9 = 10 Gbits) in the dataset generation step,
  I just produce lambda only for the batches on the test dataset when I want to measure the test error and then
  produce H_tilde_0 and feed the trained network with that and measure performance in presence of phase noise
 
--In summary, now I train using only the phase noise free channel info (H) and phase noise free loss function to 
+-In summary, now I train using only the phase noise free channel (H) and phase noise free loss function to 
 train and every 10 epochs I do two tests 1) loss_phase_noise_free(H_tilde_0) and 2) loss_phased_noised(H_tilde_0)
+
+- In this version, I also create the code for producing box charts
+- the phase noised loss functione is now fully serialized and there is no map_fn anywhere in the loss and datagenerator functions
+- I also use eager execution for faster run

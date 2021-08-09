@@ -8,8 +8,7 @@ from loss_parallel_phase_noised import parallel_loss_phase_noised_class
 
 class Sohrabi_s_method_tester_class:
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, mat_fname,
-                 dataset_size, sampling_ratio_time_domain_keep, sampling_ratio_subcarrier_domain_keep):
+                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, mat_fname, dataset_size):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -33,23 +32,23 @@ class Sohrabi_s_method_tester_class:
         self.c = c
         self.mat_fname = mat_fname
         self.dataset_size = dataset_size
-        self.sampling_ratio_time_domain_keep = sampling_ratio_time_domain_keep
-        self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
+        self.PHN_innovation_std = PHN_innovation_std
 
     @tf.function
     @tf.autograph.experimental.do_not_convert
     def capacity_in_presence_of_phase_noise_Sohrabi(self):
-        obj_loss_parallel_phase_noised_2 = parallel_loss_phase_noised_class(self.N_b_a, self.N_b_rf, self.N_u_a,
-                                                                           self.N_u_rf, self.N_s, self.K, self.SNR,
-                                                                           self.P,
-                                                                           self.N_c, self.N_scatterers,
-                                                                           self.angular_spread_rad, self.wavelength,
-                                                                           self.d, self.BATCHSIZE,
-                                                                           self.phase_shift_stddiv,
-                                                                           self.truncation_ratio_keep,
-                                                                           self.Nsymb,
-                                                                           self.sampling_ratio_time_domain_keep,
-                                                                           self.sampling_ratio_subcarrier_domain_keep)
+        obj_loss_parallel_phase_noised_2 = parallel_loss_phase_noised_class(self.N_b_a,
+                                                                            self.N_b_rf,
+                                                                            self.N_u_a,
+                                                                            self.N_u_rf,
+                                                                            self.N_s,
+                                                                            self.K, self.SNR,
+                                                                            self.P, self.N_c,
+                                                                            self.N_scatterers,
+                                                                            self.angular_spread_rad,
+                                                                            self.wavelength,
+                                                                            self.d,
+                                                                            self.BATCHSIZE, 1, self.Nsymb, 1, 1)
 
         the_loss_function_phn = obj_loss_parallel_phase_noised_2.capacity_calculation_for_frame_for_batch
 
@@ -71,7 +70,6 @@ class Sohrabi_s_method_tester_class:
                                 0:self.dataset_size, :, :, :]
         # print(W_RF_Sohrabi_optimized)
         inputs0 = [V_D_Sohrabi_optimized, W_D_Sohrabi_optimized, H, V_RF_Sohrabi_optimized, W_RF_Sohrabi_optimized, Lambda_B, Lambda_U]
-
         C, C_samples_x_OFDM_index, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples = the_loss_function_phn(inputs0)
         return C,\
                tf.squeeze(C_samples_x_OFDM_index),\

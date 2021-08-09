@@ -9,14 +9,16 @@ import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 from os.path import dirname, join as pjoin
-#
+
+
 # if tf.test.gpu_device_name() == '/device:GPU:0':
 #   tf.device('/device:GPU:0')
 
 class dataset_generator_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, mat_fname, dataset_size):
+                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std,
+                 mat_fname, dataset_size, mode):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -41,67 +43,74 @@ class dataset_generator_class:
         self.mat_fname = mat_fname
         self.dataset_size = dataset_size
         self.PHN_innovation_std = PHN_innovation_std
+        self.mode = mode
 
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
 
     @tf.function
     def PHN_forall_RF(self, theta):
-        #print('should be N_rf but is: ', theta.shape)
-        T0= tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32),
-                                        axis=0))
+        # print('should be N_rf but is: ', theta.shape)
+        T0 = tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32),
+                                      axis=0))
         return T0
 
     @tf.function
     def PHN_forall_RF_forall_K(self, theta):
-        #print('should be K*N_rf but is: ', theta.shape)
+        # print('should be K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF, theta)
-
 
     @tf.function
     def PHN_forall_RF_forall_K_forall_symbols(self, theta):
-        #print('should be Nsymb*K*N_rf but is: ', theta.shape)
+        # print('should be Nsymb*K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF_forall_K, theta)
 
     @tf.function
     def PHN_forall_RF_forall_K_forall_symbols_forall_samples(self, theta):
-        #print('should be dataset_size*Nsymb*K*N_rf but is: ', theta.shape)
+        # print('should be dataset_size*Nsymb*K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF_forall_K_forall_symbols, theta)
 
     @tf.function
-    def Wiener_phase_noise_generator_Ruoyu_for_one_frame_per_RF(self, Nrf):
-        # r1, r2 = Inputs
-        # PHN_innovation_std = 0.098# 2 * np.pi * self.fc * np.sqrt(self.c * self.Ts)
-        T0 = tf.random.normal(shape = [self.Nsymb * self.K, Nrf],
-                                                           mean=0.0,
-                                                           stddev=self.PHN_innovation_std,
-                                                           dtype=tf.float32,
-                                                           seed=None,
-                                                           name=None)
-        PHN_time_samples = tf.math.cumsum(T0)
-        exp_of_jPHN_time_samples = (tf.complex(tf.cos(PHN_time_samples), tf.sin(PHN_time_samples))) / self.K #self.Nsymb * self.K, Nrf
-        exp_of_jPHN_time_samples_Nsymb_x_K_x_Nrf = tf.reshape(exp_of_jPHN_time_samples, shape=[self.Nsymb, self.K, Nrf])
-        exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K = tf.transpose(exp_of_jPHN_time_samples_Nsymb_x_K_x_Nrf, perm= [0,2,1])
-        DFT_of_exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K = tf.signal.fft(exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K) # Computes the 1-dimensional discrete Fourier transform over the inner-most dimension of input
-        return DFT_of_exp_of_jPHN_time_samples_Nsymb_x_Nrf_x_K
+    def Wiener_phase_noise_generator_Ruoyu_for_one_frame_forall_RF(self, Nrf):
+        if (self.mode == 'train'):
+            N_symbols = 1
+        else:
+            N_symbols = self.Nsymb
+
+        DFT_phn_tmp = []
+        for nr in range(Nrf):
+            T0 = tf.random.normal(shape=[N_symbols * self.K],
+                              mean=0.0,
+                              stddev=self.PHN_innovation_std,
+                              dtype=tf.float32,
+                              seed=None,
+                              name=None)
+            PHN_time = tf.math.cumsum(T0)
+            PHN_time_reshaped = tf.reshape(PHN_time, shape=[N_symbols, self.K])
+            exp_j_PHN_time_reshaped = tf.complex(tf.cos(PHN_time_reshaped),
+                                                 tf.sin(PHN_time_reshaped)) / self.K
+            DFT_of_exp_j_PHN_time_reshaped = tf.signal.fft(exp_j_PHN_time_reshaped)  # Computes the 1-dimensional discrete Fourier transform over the inner-most dimension of input
+            DFT_phn_tmp.append(DFT_of_exp_j_PHN_time_reshaped)
+
+        output = tf.transpose(tf.stack(DFT_phn_tmp, axis=0), perm=[1, 2, 0])
+
+        return output
 
     @tf.function
-    def PHN_for_all_frames(self, Nrf):
-        N_frames = self.BATCHSIZE
-        Input = Nrf*tf.ones(shape=[N_frames], dtype= tf.int32)
-        DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K = tf.map_fn(self.Wiener_phase_noise_generator_Ruoyu_for_one_frame_per_RF, Input,
-                                                    fn_output_signature= tf.complex64,
-                                                    parallel_iterations= N_frames)
-        DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf = tf.transpose(DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_Nrf_x_K, perm= [0, 1,3,2])
-        return DFT_of_exp_of_jPHN_time_samples_Nframes_x_Nsymb_x_K_x_Nrf
+    def PHN_for_entire_batch(self, Nrf):
+        DFT_of_exp_of_jPHN_tmp = []
+        for ij in range(self.BATCHSIZE):
+            DFT_of_exp_of_jPHN_tmp.append(self.Wiener_phase_noise_generator_Ruoyu_for_one_frame_forall_RF(Nrf))
+        DFT_of_exp_of_jPHN = tf.stack(DFT_of_exp_of_jPHN_tmp, axis=0)
+        return DFT_of_exp_of_jPHN
 
     @tf.function
     def phase_noise_dataset_generator(self):
         # BS
-        PHN_B_DFT_domain_samples_K_Nrf_train = self.PHN_for_all_frames(self.N_b_rf) #self.dataset_size * self.Nsymb * self.K * N_rf
+        PHN_B_DFT_domain_samples_K_Nrf_train = self.PHN_for_entire_batch(self.N_b_rf)
         Lambda_B = self.PHN_forall_RF_forall_K_forall_symbols_forall_samples(PHN_B_DFT_domain_samples_K_Nrf_train)
         # UE
-        PHN_U_DFT_domain_samples_K_Nrf_train = self.PHN_for_all_frames(self.N_u_rf)
+        PHN_U_DFT_domain_samples_K_Nrf_train = self.PHN_for_entire_batch(self.N_u_rf)
         Lambda_U = self.PHN_forall_RF_forall_K_forall_symbols_forall_samples(PHN_U_DFT_domain_samples_K_Nrf_train)
         return Lambda_B, Lambda_U
 
@@ -133,8 +142,6 @@ class dataset_generator_class:
             return tf.roll(tf.reverse(Lambda_matrix, axis=[0]), shift=tf.squeeze(k) + 1, axis=0)
         else:  # q-k
             return tf.roll(Lambda_matrix, shift=tf.squeeze(k), axis=0)
-
-
 
     @tf.function
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
@@ -222,23 +229,23 @@ class dataset_generator_class:
                                                                begin=[0, 0, 0, 0, 0],
                                                                size=[self.BATCHSIZE, 1, self.K, self.N_u_a,
                                                                      self.N_u_a]))
-        bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
-        H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
-        H_tilde_0 = []
-        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
-        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
-        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
 
-        return H_complex, H_tilde_0, Lambda_B, Lambda_U
+        if (self.mode == 'train'):
+            return H_complex, tf.stack((tf.math.real(H_complex), tf.math.imag(H_complex)), axis=4)
+        else:
+            bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
+            H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
+            H_tilde_0 = []
+            H_tilde_0.append(tf.math.real(H_tilde_0_complex))
+            H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
+            H_tilde_0 = tf.stack(H_tilde_0, axis=4)
+            return H_complex, H_tilde_0, Lambda_B, Lambda_U
 
     @tf.function
-    def dataset_generator(self, mode, phase_noise):
-
+    def dataset_generator(self):
         mat_contents = sio.loadmat(self.mat_fname)
-
         H = np.zeros(shape=[self.dataset_size, self.K, self.N_u_a, self.N_b_a, 2], dtype=np.float32)
-
-        if (mode == "train"):
+        if (self.mode == "train"):
             var_name_real = "H_real_" + "train"
             H[:, :, :, :, 0] = np.transpose(mat_contents[var_name_real], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :,
                                :]
@@ -246,11 +253,6 @@ class dataset_generator_class:
             H[:, :, :, :, 1] = np.transpose(mat_contents[var_name_imag], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :,
                                :]
             H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-            my_dataset = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(H_complex),
-                                              tf.data.Dataset.from_tensor_slices(H)))
-            my_dataset = my_dataset.cache()
-            my_dataset = my_dataset.batch(self.BATCHSIZE)
-
         else:
             var_name_real = "H_real_" + "test"
             H[:, :, :, :, 0] = \
@@ -258,12 +260,69 @@ class dataset_generator_class:
             var_name_imag = "H_imag_" + "test"
             H[:, :, :, :, 1] = \
                 np.transpose(mat_contents[var_name_imag], axes=[0, 3, 1, 2])[0:self.dataset_size, :, :, :]
-            H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
-            my_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
-            # my_dataset = my_dataset.cache()
-            my_dataset = my_dataset.batch(self.BATCHSIZE)
-            my_dataset = my_dataset.map(self.dataset_mapper, num_parallel_calls=tf.data.AUTOTUNE )
 
+        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        my_dataset = tf.data.Dataset.from_tensor_slices(H_complex)
+        my_dataset = my_dataset.cache()
+        my_dataset = my_dataset.batch(self.BATCHSIZE)
+        my_dataset = my_dataset.map(self.dataset_mapper, num_parallel_calls=tf.data.AUTOTUNE)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         my_dataset = my_dataset.prefetch(AUTOTUNE)
         return my_dataset
+
+    @tf.function
+    def data_generator_for_evaluation_of_proposed_beamformer(self, batch_number):
+        mat_contents = sio.loadmat(self.mat_fname)
+        H = np.zeros(shape=[self.BATCHSIZE, self.K, self.N_u_a, self.N_b_a, 2], dtype=np.float32)
+        var_name_real = "H_real_" + "test"
+        H[:, :, :, :, 0] = \
+            np.transpose(mat_contents[var_name_real], axes=[0, 3, 1, 2])[
+            batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+        var_name_imag = "H_imag_" + "test"
+        H[:, :, :, :, 1] = \
+            np.transpose(mat_contents[var_name_imag], axes=[0, 3, 1, 2])[
+            batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+
+        H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
+        Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
+        Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_B,
+                                                               begin=[0, 0, 0, 0, 0],
+                                                               size=[self.BATCHSIZE, 1, self.K, self.N_b_a,
+                                                                     self.N_b_a]))
+        Lambda_U_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_U,
+                                                               begin=[0, 0, 0, 0, 0],
+                                                               size=[self.BATCHSIZE, 1, self.K, self.N_u_a,
+                                                                     self.N_u_a]))
+
+        bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
+        H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
+        H_tilde_0 = []
+        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
+        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
+        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
+        return H_complex, H_tilde_0, Lambda_B, Lambda_U
+
+    @tf.function
+    def data_generator_for_evaluation_of_Sohrabis_beamformer(self, batch_number):
+        mat_contents = sio.loadmat(self.mat_fname)
+        # No permutation is needed for the following data because they are not modified in Matlab and merely were passed
+        # to the matlab code and came back here without any changes (so their sizes is also Ok)
+        H_complex = (mat_contents['H'])[batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+        # H_tilde_0 = (mat_contents['H_tilde_0'])[batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+        Lambda_B = (mat_contents['Lambda_B'])[batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :,
+                   :, :]
+        Lambda_U = (mat_contents['Lambda_U'])[batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :,
+                   :, :]
+
+        V_RF_Sohrabi_optimized = (mat_contents['V_RF_Sohrabi_optimized'])[
+                                 batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :]
+        W_RF_Sohrabi_optimized = (mat_contents['W_RF_Sohrabi_optimized'])[
+                                 batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :]
+
+        # The following data require permutation to bring k (subcarrier) to the second dimension
+        V_D_Sohrabi_optimized = np.transpose(mat_contents['V_D_Sohrabi_optimized'], axes=[0, 3, 1, 2])[
+                                batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+        W_D_Sohrabi_optimized = np.transpose(mat_contents['W_D_Sohrabi_optimized'], axes=[0, 3, 1, 2])[
+                                batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+        return H_complex, Lambda_B, Lambda_U, V_RF_Sohrabi_optimized, W_RF_Sohrabi_optimized, \
+               V_D_Sohrabi_optimized, W_D_Sohrabi_optimized
