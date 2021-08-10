@@ -49,7 +49,6 @@ class ML_model_class(tf.keras.Model):
         self.activation = activation
         self.phase_noise = phase_noise
 
-
     def train_step(self, inputs0):
         H_complex, H = inputs0
         with tf.GradientTape() as tape:
@@ -64,7 +63,6 @@ class ML_model_class(tf.keras.Model):
         return {"neg_capacity_train_loss": loss_metric.result()}
 
     # see https://keras.io/api/models/model_training_apis/ for validation
-
     def test_step(self, inputs0):
         H_complex, H_tilde_0, Lambda_B, Lambda_U = inputs0
         V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(H_tilde_0, training=False)
@@ -77,7 +75,6 @@ class ML_model_class(tf.keras.Model):
         capacity_metric_test.update_state(capacity_value)
         # print(capacity_value)
         return {"neg_capacity_test_loss": loss_metric_test.result() , 'neg_capacity_performance_metric': capacity_metric_test.result()}
-
 
     def evaluation_of_proposed_beamformer(self):
         obj_dataset_1 = dataset_generator_class(self.N_b_a, self.N_b_rf, self.N_u_a, self.N_u_rf, self.N_s, self.K,
@@ -96,7 +93,7 @@ class ML_model_class(tf.keras.Model):
         LLambda_U = []
         N_of_batches_in_DS = int(self.eval_dataset_size/self.BATCHSIZE)
         for batch_number in range(N_of_batches_in_DS):
-            print('batch_number: ', batch_number)
+            # print('batch_number: ', batch_number)
             H_complex, H_tilde_0, Lambda_B, Lambda_U = obj_dataset_1.data_generator_for_evaluation_of_proposed_beamformer(batch_number)
 
             V_D, W_D, V_RF, W_RF = self.model_dnn(H_tilde_0, training=False)
@@ -109,31 +106,29 @@ class ML_model_class(tf.keras.Model):
             RQ_tmp.append(T[3])
 
 
-        # # Creating data for Sohrabis method in Matlab
+        # Creating data for Sohrabis method in Matlab
 
-            # HH_complex.append(H_complex)
-            # HH_tilde_0_cplx.append(tf.complex(H_tilde_0[:, :, :, :, 0], H_tilde_0[:, :, :, :, 1]))
-            # LLambda_B.append(Lambda_B)
-            # LLambda_U.append(Lambda_U)
+            HH_complex.append(H_complex)
+            HH_tilde_0_cplx.append(tf.complex(H_tilde_0[:, :, :, :, 0], H_tilde_0[:, :, :, :, 1]))
+            LLambda_B.append(Lambda_B)
+            LLambda_U.append(Lambda_U)
 
-        # HHH_complex = tf.concat(HH_complex, axis=0).numpy()
-        # HHH_tilde_0 = tf.concat(HH_tilde_0_cplx, axis=0).numpy()
-        # LLLambda_B = tf.concat(LLambda_B, axis=0).numpy()
-        # LLLambda_U = tf.concat(LLambda_U, axis=0).numpy()
-        #
-        # mdic = {"H": HHH_complex,
-        #         "H_tilde_0": HHH_tilde_0,
-        #         'Lambda_B': LLLambda_B,
-        #         'Lambda_U': LLLambda_U}
-        #
-        # sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/data_set_for_matlab.mat",mdic)
+        HHH_complex = tf.concat(HH_complex, axis=0).numpy()
+        HHH_tilde_0 = tf.concat(HH_tilde_0_cplx, axis=0).numpy()
+        LLLambda_B = tf.concat(LLambda_B, axis=0).numpy()
+        LLLambda_U = tf.concat(LLambda_U, axis=0).numpy()
+
+        mdic = {"H": HHH_complex,
+                "H_tilde_0": HHH_tilde_0,
+                'Lambda_B': LLLambda_B,
+                'Lambda_U': LLLambda_U}
+
+        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/data_set_for_matlab.mat",mdic)
 
         return tf.squeeze(C),\
                tf.squeeze(tf.concat(C_tmp, axis = 0)),\
-               tf.squeeze(tf.concat(tf.math.real(RX_tmp), axis = 0)),\
-               tf.squeeze(tf.concat( tf.math.real(RQ_tmp), axis = 0))
-
-
+               tf.math.real(tf.squeeze(tf.concat(RX_tmp, axis = 0))),\
+               tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
 
     def evaluation_of_Sohrabis_beamformer(self):
         dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
@@ -150,7 +145,7 @@ class ML_model_class(tf.keras.Model):
         RQ_tmp = []
         N_of_batches_in_DS = int(self.eval_dataset_size/self.BATCHSIZE)
         for batch_number in range(N_of_batches_in_DS):
-            print('batch_number: ', batch_number)
+            # print('batch_number: ', batch_number)
             H_complex, Lambda_B, Lambda_U, \
             V_RF_Sohrabi_optimized, W_RF_Sohrabi_optimized, \
             V_D_Sohrabi_optimized, W_D_Sohrabi_optimized = obj_dataset_2.data_generator_for_evaluation_of_Sohrabis_beamformer(batch_number)
@@ -176,8 +171,9 @@ class ML_model_class(tf.keras.Model):
 
         return tf.squeeze(C),\
                tf.squeeze(tf.concat(C_tmp, axis = 0)),\
-               tf.squeeze(tf.concat(tf.math.real(RX_tmp), axis = 0)),\
-               tf.squeeze(tf.concat( tf.math.real(RQ_tmp), axis = 0))
+               tf.math.real(tf.squeeze(tf.concat(RX_tmp, axis = 0))),\
+               tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
+
     @property
     def metrics(self):
         # We list our `Metric` objects here so that `reset_states()` can be

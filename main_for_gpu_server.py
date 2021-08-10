@@ -37,11 +37,11 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240
-    test_dataset_size = 1024
-    eval_dataset_size = 1024
+    train_dataset_size = 8
+    test_dataset_size = 8
+    eval_dataset_size = 8
     width_of_network = 1
-    BATCHSIZE = 128
+    BATCHSIZE = 4
     L_rate =  1e-3
     dropout_rate = 0.5
     precision_fixer = 1e-6
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     Ts = 1. / fs
     # tensorboard_log_frequency = 10
 
-    PHN_innovation_std = np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
+    PHN_innovation_std = np.sqrt(1024/4)*np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
     #
 
@@ -182,11 +182,8 @@ if __name__ == '__main__':
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model_pre_training.fit(the_dataset_train,
-                                  epochs=1,
-                                  validation_data=the_dataset_test,
-                                  callbacks=[reduce_lr],
-                                  validation_freq=1,
-                                  verbose=2)
+                                  epochs=2, callbacks=[reduce_lr], verbose=2)
+                                  # ,validation_data=the_dataset_test, validation_freq=1,verbose=1) #
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')
@@ -214,7 +211,7 @@ if __name__ == '__main__':
             'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
             'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
 
-    sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts.mat",
+    sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_for_boxcharts.mat",
                 mdic)
     end_time_2 = time.time()
     print("elapsed time for box-chart evaluation = ", (end_time_2 - start_time_2), ' seconds')
@@ -239,10 +236,144 @@ if __name__ == '__main__':
             "L": L,
             'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
             'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
-    sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts_sohrabis.mat",
+    sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_for_boxcharts_sohrabis.mat",
                 mdic)
     end_time_3 = time.time()
     print("elapsed time for box-chart evaluation of Sohrabis = ", (end_time_3 - start_time_3), ' seconds')
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # print('C = ', Capacity_simul)
+    # print('C = ', C_samples_x_OFDM_index)
+    # print('C = ', RX_forall_k_forall_OFDMs_forall_samples)
+    # print('C = ', RQ_forall_k_forall_OFDMs_forall_samples)
+    #
+
+
+    # # TRAINING - stage 2 ///////////////////////////////////////////////////////////////////////////////////////////////
+    # # In this stage, we do a phase noised training to accurately optimize the beamformer
+    # # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    #
+    # # A. PHN-free dataset creation
+    # obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
+    #                                                 angular_spread_rad, wavelength, d, BATCHSIZE,
+    #                                                 phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
+    #                                                 fc,
+    #                                                 c, PHN_innovation_std, dataset_name, train_dataset_size)
+    # the_dataset_train_phn= obj_dataset_train_phn.dataset_generator(mode="train", phase_noise="y")
+    # obj_dataset_test_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
+    #                                                angular_spread_rad, wavelength, d, BATCHSIZE,
+    #                                                phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts,
+    #                                                fc,
+    #                                                c, PHN_innovation_std, dataset_name, test_dataset_size)
+    # the_dataset_test_phn = obj_dataset_test_phn.dataset_generator(mode="test", phase_noise="y")
+    # print('STEP 5: Dataset creation is done.')
+    #
+    # # C. Loss function creation (sampled)
+    # obj_loss_parallel_phase_noised_approx = parallel_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR,
+    #                                                                         P, N_c,
+    #                                                                         N_scatterers, angular_spread_rad,
+    #                                                                         wavelength,
+    #                                                                         d, BATCHSIZE, phase_shift_stddiv,
+    #                                                                         truncation_ratio_keep, Nsymb,
+    #                                                                         sampling_ratio_time_domain_keep,
+    #                                                                         sampling_ratio_subcarrier_domain_keep)
+    # the_loss_function_phn_approx = obj_loss_parallel_phase_noised_approx.capacity_calculation_for_frame_for_batch
+    #
+    # # D. Transfer learning
+    # obj_ML_model_phn = ML_model_class(model_dnn=obj_ML_model.model_dnn)
+    # print('STEP 6: A new network has been initialized with the weights and biases of the previous network.')
+    #
+    # optimizer_2 = tf.keras.optimizers.Adam(learning_rate=L_rate / 2, clipnorm=1.)
+    # # E. Training the new network with phase-noise perturbed loss function
+    # obj_ML_model_phn.compile(
+    #     optimizer=optimizer_2,
+    #     loss=the_loss_function_phn_approx,
+    #     activation=obj_CNN_model.custom_actication,
+    #     phase_noise='y')
+    # reduce_lrTF = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss', factor=0.5, patience=2, min_lr=1e-12,
+    #                                                    mode='min', verbose=1)
+    #
+    # log_dirTF = "logs_step_2/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # #
+    # # tboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dirTF,
+    # #                                                  histogram_freq=1,
+    # #                                                  profile_batch='5,6')
+    #
+    # print('STEP 7: Training in presence of phase noise has started.')
+    # end_time_one_and_half = time.time()
+    # # obj_ML_model_phn.fit(the_dataset_train_phn, epochs=2,  # 50
+    # #                      validation_data=the_dataset_test_phn, callbacks=[reduce_lrTF],
+    # #                      validation_batch_size=BATCHSIZE, verbose=1)
+    # end_time_2 = time.time()
+    # print("elapsed time of stage-two training = ", (end_time_2 - end_time_one_and_half), ' seconds')
+
+
+
+
+
+    # def loss_function_time_test():
+    #     obj_loss_parallel_phase_noised_accurate = parallel_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
+    #                                                                               SNR, P, N_c,
+    #                                                                               N_scatterers, angular_spread_rad,
+    #                                                                               wavelength,
+    #                                                                               d, BATCHSIZE, phase_shift_stddiv,
+    #                                                                               1, Nsymb,
+    #                                                                               1,
+    #                                                                               1)
+    #     the_loss_function_phn_accurate = obj_loss_parallel_phase_noised_accurate.capacity_calculation_for_frame_for_batch
+    #     obj_ML_model_phn.compile(
+    #         optimizer=optimizer_2,
+    #         loss=the_loss_function_phn_accurate,
+    #         activation=obj_CNN_model.custom_actication,
+    #         phase_noise='y')
+    #     Capacity_simul = obj_ML_model_phn.evaluate(the_dataset_test_phn)
+    #     print('monte-carlo simulation, C = ', Capacity_simul)
+    #
+    #
+    # loss_function_time_test()
+    # # for tensorboard run this:
+    # # cd C:\Users\jabba\Google Drive\Main\Codes\ML_MIMO_new_project\PY_projects\convnet_transfer_learning_v1
+    # # tensorboard --logdir logs/fit/

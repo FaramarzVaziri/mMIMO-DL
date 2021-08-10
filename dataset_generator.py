@@ -48,29 +48,29 @@ class dataset_generator_class:
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
 
-    @tf.function
+    
     def PHN_forall_RF(self, theta):
         # print('should be N_rf but is: ', theta.shape)
         T0 = tf.linalg.diag(tf.repeat(theta, repeats=tf.cast(self.N_b_a / self.N_b_rf, dtype=tf.int32),
                                       axis=0))
         return T0
 
-    @tf.function
+    
     def PHN_forall_RF_forall_K(self, theta):
         # print('should be K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF, theta)
 
-    @tf.function
+    
     def PHN_forall_RF_forall_K_forall_symbols(self, theta):
         # print('should be Nsymb*K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF_forall_K, theta)
 
-    @tf.function
+    
     def PHN_forall_RF_forall_K_forall_symbols_forall_samples(self, theta):
         # print('should be dataset_size*Nsymb*K*N_rf but is: ', theta.shape)
         return tf.map_fn(self.PHN_forall_RF_forall_K_forall_symbols, theta)
 
-    @tf.function
+    
     def Wiener_phase_noise_generator_Ruoyu_for_one_frame_forall_RF(self, Nrf):
         if (self.mode == 'train'):
             N_symbols = 1
@@ -96,7 +96,7 @@ class dataset_generator_class:
 
         return output
 
-    @tf.function
+    
     def PHN_for_entire_batch(self, Nrf):
         DFT_of_exp_of_jPHN_tmp = []
         for ij in range(self.BATCHSIZE):
@@ -104,7 +104,7 @@ class dataset_generator_class:
         DFT_of_exp_of_jPHN = tf.stack(DFT_of_exp_of_jPHN_tmp, axis=0)
         return DFT_of_exp_of_jPHN
 
-    @tf.function
+    
     def phase_noise_dataset_generator(self):
         # BS
         PHN_B_DFT_domain_samples_K_Nrf_train = self.PHN_for_entire_batch(self.N_b_rf)
@@ -126,7 +126,7 @@ class dataset_generator_class:
     #     trans_DFT_PNsamps_cplx_K_Nrf = tf.transpose(DFT_PNsamps_cplx_K_Nrf, perm= [0, 1, 3, 2])  # batch, symb, k, rf
     #     return PNsamps_cplx_K_Nrf, trans_DFT_PNsamps_cplx_K_Nrf
     #
-    # @tf.function
+    # 
     # def phase_noise_dataset_generator(self):
     #     # BS
     #     dummy1, PHN_B_DFT_domain_samples_K_Nrf_train = self.Wiener_phase_noise_generator_Ruoyu(self.N_b_rf) #self.dataset_size * self.Nsymb * self.K * N_rf
@@ -136,14 +136,14 @@ class dataset_generator_class:
     #     Lambda_U = self.PHN_forall_RF_forall_K_forall_symbols_forall_samples(PHN_U_DFT_domain_samples_K_Nrf_train)
     #     return Lambda_B, Lambda_U
 
-    @tf.function
+    
     def cyclical_shift(self, Lambda_matrix, k, flip):
         if flip == True:  # k-q
             return tf.roll(tf.reverse(Lambda_matrix, axis=[0]), shift=tf.squeeze(k) + 1, axis=0)
         else:  # q-k
             return tf.roll(Lambda_matrix, shift=tf.squeeze(k), axis=0)
 
-    @tf.function
+    
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int(
@@ -164,14 +164,14 @@ class dataset_generator_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    @tf.function
+    
     def H_tilde_k_calculation(self, bundeled_inputs_0):
         H, Lambda_B, Lambda_U = bundeled_inputs_0
         T0 = tf.linalg.matmul(Lambda_U, H)
         T1 = tf.linalg.matmul(T0, Lambda_B)
         return T1
 
-    @tf.function
+    
     def h_tilde_0_calculation_per_k(self, bundeled_inputs_0):  # inherits from paralle_loss_phase_noised_class
         H_forall_k, Lambda_B_0_forall_k, Lambda_U_0_forall_k, k = bundeled_inputs_0
         mask_of_ones = self.non_zero_element_finder_for_H_tilde(k, self.truncation_ratio_keep)
@@ -190,7 +190,7 @@ class dataset_generator_class:
                                                                   self.K * self.truncation_ratio_keep)), axis=0))
         return H_tilde_0_k
 
-    @tf.function
+    
     def h_tilde_0_calculation_forall_k(self, bundeled_inputs_0):
         H_forall_k, Lambda_B_0_forall_k, Lambda_U_0_forall_k = bundeled_inputs_0
 
@@ -207,7 +207,7 @@ class dataset_generator_class:
                                        parallel_iterations=self.K)  # parallel over all k subcarriers
         return H_tilde_0_forall_k
 
-    @tf.function
+    
     def h_tilde_0_calculation_forall_k_forall_samps(self,
                                                     bundeled_inputs_0):  # parallel over all samples of the dataset
         # H_forall_k_forall_samps, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps = bundeled_inputs_0
@@ -218,7 +218,7 @@ class dataset_generator_class:
     # sample_1 = { [H], [Lambda_0, Lambda_1,..., Lambda_13], [H_tilde_0 = f(H,Lambda_B_0, Lambda_U_0)]}
     # so, Lambda_B/U have Nsymb times more samples
 
-    @tf.function
+    
     def dataset_mapper(self, H_complex):
         Lambda_B, Lambda_U = self.phase_noise_dataset_generator()
         Lambda_B_0_forall_k_forall_samps = tf.squeeze(tf.slice(Lambda_B,
@@ -241,7 +241,7 @@ class dataset_generator_class:
             H_tilde_0 = tf.stack(H_tilde_0, axis=4)
             return H_complex, H_tilde_0, Lambda_B, Lambda_U
 
-    @tf.function
+    
     def dataset_generator(self):
         mat_contents = sio.loadmat(self.mat_fname)
         H = np.zeros(shape=[self.dataset_size, self.K, self.N_u_a, self.N_b_a, 2], dtype=np.float32)
@@ -270,7 +270,7 @@ class dataset_generator_class:
         my_dataset = my_dataset.prefetch(AUTOTUNE)
         return my_dataset
 
-    @tf.function
+    
     def data_generator_for_evaluation_of_proposed_beamformer(self, batch_number):
         mat_contents = sio.loadmat(self.mat_fname)
         H = np.zeros(shape=[self.BATCHSIZE, self.K, self.N_u_a, self.N_b_a, 2], dtype=np.float32)
@@ -302,7 +302,7 @@ class dataset_generator_class:
         H_tilde_0 = tf.stack(H_tilde_0, axis=4)
         return H_complex, H_tilde_0, Lambda_B, Lambda_U
 
-    @tf.function
+    
     def data_generator_for_evaluation_of_Sohrabis_beamformer(self, batch_number):
         mat_contents = sio.loadmat(self.mat_fname)
         # No permutation is needed for the following data because they are not modified in Matlab and merely were passed

@@ -37,21 +37,21 @@ class CNN_model_class:
         csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
 
         # CONV layers
-        C1 = Conv3D(filters=int(16 * self.width_parameter + 1), kernel_size=(1, 1, 1), strides=(1, 1, 1),
+        C1 = Conv3D(filters=int(8 * self.width_parameter + 1), kernel_size=(1, 1, 1), strides=(1, 1, 1),
                     padding='same',
                     activation='relu')
-        MP1 = MaxPooling3D(pool_size=(2, 1, 1), padding='same')
+        MP1 = MaxPooling3D(pool_size=(4, 1, 1), padding='same')
         BN1 = BatchNormalization()
-        C2 = Conv3D(filters=int(32 * self.width_parameter + 1), kernel_size=(1, 1, 1), strides=(1, 1, 1),
+        C2 = Conv3D(filters=int(16 * self.width_parameter + 1), kernel_size=(1, 1, 1), strides=(1, 1, 1),
                     padding='same',
                     activation='relu')
-        MP2 = MaxPooling3D(pool_size=(2, 2, 2), padding='same')
+        MP2 = MaxPooling3D(pool_size=(4, 1, 1), padding='same')
         BN2 = BatchNormalization()
 
         # FC layers
         Layer_flatten = Flatten()
-        FC1 = Dense(int(self.K * self.N_u_a * self.N_b_a * 2 * self.width_parameter + 1), activation='relu')
-        FC2 = Dense(int(self.K * self.N_u_a * self.N_b_a * 2 * self.width_parameter + 1), activation='relu')
+        # FC1 = Dense(int(self.K * self.N_u_a * self.N_b_a * 2 * self.width_parameter + 1), activation='relu')
+        # FC2 = Dense(int(self.K * self.N_u_a * self.N_b_a * 2 * self.width_parameter + 1), activation='relu')
 
         # specifics
         Layer_BN8 = BatchNormalization()
@@ -124,46 +124,46 @@ class CNN_model_class:
         reshaper_W_D = Reshape(target_shape=[self.K, self.N_u_rf, self.N_s, 2])
 
 
-        Layer_V_RF_1 = Dense(int(self.K * self.N_b_a * 2 * self.width_parameter + 1), # size A
+        Layer_V_RF_1 = Dense(int(self.K * self.N_b_a * 2 ), # size A
                              activation='relu')
-        Layer_V_RF_2 = Dense(int(self.K * self.N_b_a * 2 * self.width_parameter + 1), # size A
+        Layer_V_RF_2 = Dense(int(self.K * self.N_b_a * 2 ), # size A
                              activation='relu')
-        Layer_V_RF_3 = Dense(int(self.K * self.N_b_a * 2 * self.width_parameter + 1), # size A
+        Layer_V_RF_3 = Dense(int(self.K * self.N_b_a * 2 ), # size A
                              activation='relu')
-        Layer_V_RF_4 = Dense(int(self.N_b_a * 2 * self.width_parameter + 1), # size B
+        Layer_V_RF_4 = Dense(int(self.N_b_a * 2 ), # size B
                              activation='relu')
-        Layer_V_RF_5 = Dense(int(self.N_b_a * self.width_parameter + 1), # size C
+        Layer_V_RF_5 = Dense(int(self.N_b_a ), # size C
                              activation='relu')
-        Layer_V_RF_6 = Dense(int(self.N_b_a * self.width_parameter + 1), # size C
+        Layer_V_RF_6 = Dense(int(self.N_b_a ), # size C
                              activation='relu')
         Layer_V_RF_7 = Dense(self.N_b_a, activation='relu')
         # reshaper_V_RF = Reshape(target_shape=[self.N_b_a])
 
-        Layer_W_RF_1 = Dense(int(self.K * self.N_u_a * 2 * self.width_parameter + 1), # size A
+        Layer_W_RF_1 = Dense(int(self.K * self.N_u_a * 2 ), # size A
                              activation='relu')
-        Layer_W_RF_2 = Dense(int(self.K * self.N_u_a * 2 * self.width_parameter + 1), # size A
+        Layer_W_RF_2 = Dense(int(self.K * self.N_u_a * 2 ), # size A
                              activation='relu')
-        Layer_W_RF_3 = Dense(int(self.K * self.N_u_a * 2 * self.width_parameter + 1), # size A
+        Layer_W_RF_3 = Dense(int(self.K * self.N_u_a * 2  ), # size A
                              activation='relu')
-        Layer_W_RF_4 = Dense(int(self.N_u_a * 2 * self.width_parameter + 1), # size B
+        Layer_W_RF_4 = Dense(int(self.N_u_a * 2 ), # size B
                              activation='relu')
-        Layer_W_RF_5 = Dense(int(self.N_u_a * self.width_parameter + 1), # size C
+        Layer_W_RF_5 = Dense(int(self.N_u_a), # size C
                              activation='relu')
-        Layer_W_RF_6 = Dense(int(self.N_u_a * self.width_parameter + 1), # size C
+        Layer_W_RF_6 = Dense(int(self.N_u_a), # size C
                              activation='relu')
         Layer_W_RF_7 = Dense(self.N_u_a, activation='relu')
         # reshaper_W_RF = Reshape(target_shape=[self.N_u_a])
 
         # Connections
         x = C1(csi)
-        # x = MP1(x)
-        # x = BN1(x)
-        # x = C2(x)
-        # x = MP2(x)
+        x = MP1(x)
+        x = BN1(x)
+        x = C2(x)
+        x = MP2(x)
         x = BN2(x)
         x = Layer_flatten(x)
-        x = FC1(x)
-        x = FC2(x)
+        # x = FC1(x)
+        # x = FC2(x)
 
         vd = Layer_V_D_1(x)
         vd = Layer_BN8(vd)
@@ -239,8 +239,7 @@ class CNN_model_class:
 
 
     # sequential implementation
-    @tf.function
-    @tf.autograph.experimental.do_not_convert
+    
     def custom_actication(self, inputs):
         V_D, W_D, vrf, wrf = inputs
 
@@ -312,7 +311,7 @@ class CNN_model_class:
 
 
     # # map_fn implementation
-    # @tf.function
+    # 
     # @tf.autograph.experimental.do_not_convert
     # def custom_actication(self, inputs):
     #     V_D, W_D, vrf, wrf = inputs
@@ -335,7 +334,7 @@ class CNN_model_class:
     #
     #     return V_D_new_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx
     #
-    # @tf.function
+    # 
     # def normalize_power_per_subcarrier(self, bundeled_inputs_0):
     #     V_RF, V_D_k = bundeled_inputs_0
     #     T0 = tf.linalg.matmul(V_RF, V_D_k, adjoint_a=False, adjoint_b=False)
@@ -346,7 +345,7 @@ class CNN_model_class:
     #     return V_D_k_normalized
     #
     #
-    # @tf.function
+    # 
     # @tf.autograph.experimental.do_not_convert
     # def custorm_activation_per_sample(self, bundeled_inputs_0):
     #     vrf_cplx, wrf_cplx, V_D_cplx = bundeled_inputs_0
