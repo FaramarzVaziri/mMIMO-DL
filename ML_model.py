@@ -11,8 +11,10 @@ capacity_metric_test = tf.keras.metrics.Mean(name='neg_capacity_performance_metr
 
 class ML_model_class(tf.keras.Model):
 
-    def __init__(self, model_dnn, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, mat_fname, eval_dataset_size, mode, on_what_device):
+    def __init__(self, model_dnn, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad,
+                 wavelength, d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c,
+                 PHN_innovation_std, mat_fname, eval_dataset_size, mode, on_what_device,
+                 phase_noise_exists_while_training):
         super(ML_model_class, self).__init__()
         self.model_dnn = model_dnn
         self.N_b_a = N_b_a
@@ -41,6 +43,7 @@ class ML_model_class(tf.keras.Model):
         self.PHN_innovation_std = PHN_innovation_std
         self.mode = mode
         self.on_what_device = on_what_device
+        self.phase_noise_exists_while_training = phase_noise_exists_while_training
 
     def compile(self, optimizer, loss, activation, phase_noise, metric_capacity_in_presence_of_phase_noise):
         super(ML_model_class, self).compile()
@@ -52,41 +55,64 @@ class ML_model_class(tf.keras.Model):
 
     
     def train_step(self, inputs0):
-        H_complex, H = inputs0
-        with tf.GradientTape() as tape:
-            V_D, W_D, V_RF, W_RF = self.model_dnn(H)
-            inputs1 = [V_D, W_D, V_RF, W_RF]
-            V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
-            inputs2 = [V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
-            d_loss = self.loss(inputs2)
-        grads = tape.gradient(d_loss, self.model_dnn.trainable_weights)
-        self.optimizer.apply_gradients(zip(grads, self.model_dnn.trainable_weights))
-        loss_metric.update_state(d_loss)
-        return {"neg_capacity_train_loss": loss_metric.result()}
+        if (self.phase_noise_exists_while_training == False):
+            H_tilde_0_complex, H_tilde_0, _, _, _ = inputs0
+            with tf.GradientTape() as tape:
+                V_D, W_D, V_RF, W_RF = self.model_dnn(H_tilde_0)
+                inputs1 = [V_D, W_D, V_RF, W_RF]
+                V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
+                inputs2 = [V_D_new, W_D_cplx, H_tilde_0_complex, V_RF_cplx, W_RF_cplx]
+                d_loss = self.loss(inputs2)
+            grads = tape.gradient(d_loss, self.model_dnn.trainable_weights)
+            self.optimizer.apply_gradients(zip(grads, self.model_dnn.trainable_weights))
+            loss_metric.update_state(d_loss)
+            return {"neg_capacity_train_loss": loss_metric.result()}
+        else:
+            _, H_tilde_0, H_complex, Lambda_B, Lambda_U = inputs0
+            with tf.GradientTape() as tape:
+                V_D, W_D, V_RF, W_RF = self.model_dnn(H_tilde_0)
+                inputs1 = [V_D, W_D, V_RF, W_RF]
+                V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
+                inputs2 = [V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx, Lambda_B, Lambda_U]
+                d_loss = self.loss(inputs2)
+            grads = tape.gradient(d_loss, self.model_dnn.trainable_weights)
+            self.optimizer.apply_gradients(zip(grads, self.model_dnn.trainable_weights))
+            loss_metric.update_state(d_loss)
+            return {"neg_capacity_train_loss": loss_metric.result()}
 
     # see https://keras.io/api/models/model_training_apis/ for validation
     
     def test_step(self, inputs0):
-        H_complex, H_tilde_0, Lambda_B, Lambda_U = inputs0
-        V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(H_tilde_0, training=False)
-        inputs1 = [V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx]
-        V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
-        loss_val= self.loss([V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx])
-        # print(loss_val)
-        loss_metric_test.update_state(loss_val)
-        capacity_value, _, _, _ = self.metric_capacity_in_presence_of_phase_noise([V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx, Lambda_B, Lambda_U])
-        capacity_metric_test.update_state(capacity_value)
-        # print(capacity_value)
-        return {"neg_capacity_test_loss": loss_metric_test.result() , 'neg_capacity_performance_metric': capacity_metric_test.result()}
+        if (self.phase_noise_exists_while_training == False):
+            H_tilde_0_complex, H_tilde_0, H_complex, Lambda_B, Lambda_U = inputs0
+            V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(H_tilde_0, training=False)
+            inputs1 = [V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx]
+            V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
+            loss_val= self.loss([V_D_new, W_D_cplx, H_tilde_0_complex, V_RF_cplx, W_RF_cplx])
+            loss_metric_test.update_state(loss_val)
+            capacity_value, _, _, _ = self.metric_capacity_in_presence_of_phase_noise([V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx, Lambda_B, Lambda_U])
+            capacity_metric_test.update_state(capacity_value)
+            return {"neg_capacity_test_loss": loss_metric_test.result() , 'neg_capacity_performance_metric': capacity_metric_test.result()}
+        else:
+            _, H_tilde_0, H_complex, Lambda_B, Lambda_U = inputs0
+            V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(H_tilde_0, training=False)
+            inputs1 = [V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx]
+            V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
+            loss_val = self.loss([V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx, Lambda_B, Lambda_U])
+            loss_metric_test.update_state(loss_val)
+            capacity_value, _, _, _ = self.metric_capacity_in_presence_of_phase_noise(
+                [V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx, Lambda_B, Lambda_U])
+            capacity_metric_test.update_state(capacity_value)
+            return {"neg_capacity_test_loss": loss_metric_test.result(),
+                    'neg_capacity_performance_metric': capacity_metric_test.result()}
 
-    
     def evaluation_of_proposed_beamformer(self):
         obj_dataset_1 = dataset_generator_class(self.N_b_a, self.N_b_rf, self.N_u_a, self.N_u_rf, self.N_s, self.K,
                                                    self.SNR, self.P, self.N_c, self.N_scatterers,
                                                    self.angular_spread_rad, self.wavelength,
                                                    self.d, self.BATCHSIZE, self.phase_shift_stddiv,
                                                    self.truncation_ratio_keep, self.Nsymb, self.Ts, self.fc, self.c,
-                                                   self.PHN_innovation_std, self.mat_fname, self.eval_dataset_size, 'test')
+                                                   self.PHN_innovation_std, self.mat_fname, self.eval_dataset_size, 'test', 'yes')
         C = 0
         C_tmp = []
         RX_tmp = []
@@ -149,7 +175,7 @@ class ML_model_class(tf.keras.Model):
                                                    self.d, self.BATCHSIZE, self.phase_shift_stddiv,
                                                    self.truncation_ratio_keep, self.Nsymb, self.Ts, self.fc, self.c,
                                                    self.PHN_innovation_std, dataset_for_testing_sohrabi, self.eval_dataset_size,
-                                                   'test')
+                                                   'test', 'yes')
         C = 0
         C_tmp = []
         RX_tmp = []

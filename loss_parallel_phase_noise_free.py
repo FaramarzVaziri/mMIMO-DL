@@ -56,11 +56,10 @@ class loss_parallel_phase_noise_free_class:
     def C_per_sample(self,bundeled_inputs):
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
         T0 = tf.zeros(shape = [1], dtype=tf.float32)
-        for k in range(self.K):
+        for k in tf.range(self.K):
             T0 = tf.add(T0,
                         self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx]))
         return T0/self.K
-
 
     def ergodic_capacity(self, bundeled_inputs):
         # impl 1
@@ -73,7 +72,7 @@ class loss_parallel_phase_noise_free_class:
         V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
         # H_complex = tf.complex(H[:, :, :, :, 0], H[:, :, :, :, 1])
         T0 = tf.zeros(shape = [1], dtype=tf.float32)
-        for ij in range(self.BATCHSIZE):
+        for ij in tf.range(self.BATCHSIZE):
             T0 = tf.add(T0, self.C_per_sample( [V_D_cplx[ij,:],
                                                 W_D_cplx[ij,:],
                                                 H_complex[ij,:],

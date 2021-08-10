@@ -18,7 +18,7 @@ class dataset_generator_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std,
-                 mat_fname, dataset_size, mode):
+                 mat_fname, dataset_size, mode, phase_noise):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -44,6 +44,7 @@ class dataset_generator_class:
         self.dataset_size = dataset_size
         self.PHN_innovation_std = PHN_innovation_std
         self.mode = mode
+        self.phase_noise = phase_noise
 
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
@@ -72,8 +73,10 @@ class dataset_generator_class:
 
     
     def Wiener_phase_noise_generator_Ruoyu_for_one_frame_forall_RF(self, Nrf):
-        if (self.mode == 'train'):
+        if (self.mode == 'train' and self.phase_noise == 'no'):
             N_symbols = 1
+        elif(self.mode == 'train' and self.phase_noise == 'yes'):
+            N_symbols = self.Nsymb
         else:
             N_symbols = self.Nsymb
 
@@ -229,17 +232,22 @@ class dataset_generator_class:
                                                                begin=[0, 0, 0, 0, 0],
                                                                size=[self.BATCHSIZE, 1, self.K, self.N_u_a,
                                                                      self.N_u_a]))
+        bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
+        H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
+        H_tilde_0 = []
+        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
+        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
+        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
+        #
+        # if (self.phase_noise == 'yes'):
+        #     return H_complex, H_tilde_0, Lambda_B, Lambda_U
+        # else:
+        #     if (self.mode == 'train'):
+        #         return H_tilde_0_complex, H_tilde_0
+        #     else: # test and capacity evaluation
+        #         return H_tilde_0_complex, H_tilde_0, H_complex, H_tilde_0, Lambda_B, Lambda_U
 
-        if (self.mode == 'train'):
-            return H_complex, tf.stack((tf.math.real(H_complex), tf.math.imag(H_complex)), axis=4)
-        else:
-            bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
-            H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
-            H_tilde_0 = []
-            H_tilde_0.append(tf.math.real(H_tilde_0_complex))
-            H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
-            H_tilde_0 = tf.stack(H_tilde_0, axis=4)
-            return H_complex, H_tilde_0, Lambda_B, Lambda_U
+        return H_tilde_0_complex, H_tilde_0, H_complex, Lambda_B, Lambda_U
 
     
     def dataset_generator(self):

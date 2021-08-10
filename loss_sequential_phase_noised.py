@@ -6,7 +6,7 @@ class sequential_loss_phase_noised_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, truncation_ratio_keep, Nsymb,
-                 sampling_ratio_time_domain_keep, sampling_ratio_subcarrier_domain_keep):
+                 sampling_ratio_time_domain_keep, sampling_ratio_subcarrier_domain_keep, mode):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -26,6 +26,7 @@ class sequential_loss_phase_noised_class:
         self.Nsymb = Nsymb
         self.sampling_ratio_time_domain_keep = sampling_ratio_time_domain_keep
         self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
+        self.mode = mode
 
     
     def cyclical_shift(self, Lambda_matrix, k, flip):
@@ -66,7 +67,7 @@ class sequential_loss_phase_noised_class:
         Lambda_B_cyclshifted_masked = tf.boolean_mask(self.cyclical_shift(Lambda_B, k, flip=False), mask=mask_of_ones, axis=0)
 
         H_tilde_k = tf.zeros(shape=[self.N_u_a, self.N_b_a], dtype= tf.complex64)
-        for q in range(int(self.K * self.truncation_ratio_keep)):
+        for q in tf.range(int(self.K * self.truncation_ratio_keep)):
             H_tilde_k = tf.add(H_tilde_k,
                                tf.linalg.matmul(tf.linalg.matmul(Lambda_U_cyclshifted_masked[q],
                                                                  H_masked[q]), Lambda_B_cyclshifted_masked[q]))
@@ -113,7 +114,7 @@ class sequential_loss_phase_noised_class:
             Lambda_B_cyclshifted_masked = tf.boolean_mask(self.cyclical_shift(Lambda_B, tf.squeeze(m), flip=False), mask= mask_of_ones, axis=0)
 
             H_hat_m_k = tf.zeros(shape= [self.N_u_a, self.N_b_a], dtype=tf.complex64)
-            for q in range(self.K * self.truncation_ratio_keep):
+            for q in tf.range(int(self.K * self.truncation_ratio_keep)):
                 H_hat_m_k = tf.add(H_hat_m_k, tf.linalg.matmul(tf.linalg.matmul(Lambda_U_cyclshifted_masked[q,:], H_masked[q,:], adjoint_a=False, adjoint_b=False),
                     Lambda_B_cyclshifted_masked[q,:], adjoint_a=False, adjoint_b=False))
 
@@ -136,7 +137,7 @@ class sequential_loss_phase_noised_class:
     def Rq_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0 # [k, ...]
         RQ = tf.zeros(shape= [self.N_s, self.N_s], dtype=tf.complex64)
-        for m in range(self.K):
+        for m in tf.range(self.K):
             RQ = tf.add(RQ, tf.add( tf.cast(self.R_N_Q_m_k([Lambda_U[tf.math.floormod(k - m, self.K), :], W_D[k,:], W_RF]), tf.complex64),
                       tf.cast(self.R_I_Q_m_k([V_D[m,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k, m]), tf.complex64)))
         return RQ
@@ -155,115 +156,94 @@ class sequential_loss_phase_noised_class:
         T2 = tf.add(tf.eye(self.N_s, dtype=tf.complex64), T1)
         T3 = tf.math.real(tf.linalg.det(T2))
         eta = 0.
-        return tf.cond(tf.less(0.0, T3),
+        if (self.mode == 'train' or self.mode == 'test'):
+            return tf.cond(tf.less(0.0, T3),
                        lambda: tf.divide(tf.math.log(T3), tf.math.log(2.0)),
-                       lambda: tf.multiply(eta, T3)), RX, RQ
-
+                       lambda: tf.multiply(eta, T3))
+        else: # eval
+            return tf.cond(tf.less(0.0, T3),
+                           lambda: tf.divide(tf.math.log(T3), tf.math.log(2.0)),
+                           lambda: tf.multiply(eta, T3)), RX, RQ
     
     def capacity_forall_k(self, bundeled_inputs_0):
-        # # impl with for ------------------------
-        # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [k, ...]
-        # # sampled_K = tf.convert_to_tensor(np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False),dtype=tf.int64)
-        # c = 0.
-        # RX_tmp = []
-        # RQ_tmp = []
-        # # for k in range(self.K):
-        # for k in np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False).astype(int):
-        #     T = self.capacity_and_RX_RQ_per_k([V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k])
-        #     c = c + T[0]/self.K
-        #     RX_tmp.append(T[1])
-        #     RQ_tmp.append(T[2])
-        #
-        # RX = tf.stack(RX_tmp, axis=0)
-        # RQ = tf.stack(RQ_tmp, axis=0)
-        # return c, RX, RQ
+        if (self.mode == 'train' or self.mode == 'test'):
+            V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [k, ...]
+            c = 0.
+            for k in np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False).astype(int):
+                T = self.capacity_and_RX_RQ_per_k([V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k])
+                c = c + T / int(self.sampling_ratio_subcarrier_domain_keep * self.K)
+            return c
+        else: # eval
+            V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [k, ...]
+            c = 0.
+            for k in tf.range(self.K):
+                T = self.capacity_and_RX_RQ_per_k([V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k])
+                c = c + T[0] / self.K
+                if (k == 0):
+                    RX = tf.expand_dims(T[1], axis=0)
+                    RQ = tf.expand_dims(T[2], axis=0)
+                else:
+                    RX = tf.concat([RX, tf.expand_dims(T[1], axis=0)], axis=0)
+                    RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
 
-    #  impl 2 with for and concat ------------------------
-        V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [k, ...]
-        c = 0.
-        for k in range(self.K): # np.random.choice(self.K, int(self.sampling_ratio_subcarrier_domain_keep * self.K), replace=False).astype(int):
-            T = self.capacity_and_RX_RQ_per_k([V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k])
-            c = c + T[0] / self.K
-            if (k==0):
-                RX = tf.expand_dims(T[1], axis=0)
-                RQ = tf.expand_dims(T[2], axis=0)
-            else:
-                RX = tf.concat([RX, tf.expand_dims(T[1], axis=0)], axis=0)
-                RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
+            return c, RX, RQ
 
-        return c, RX, RQ
-
-    
     def capacity_forall_symbols(self, bundeled_inputs_0):
-        # #  impl with for
-        # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
-        # selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
-        # c_tmp = []
-        # RX_tmp = []
-        # RQ_tmp = []
-        # for ns in range(0, self.Nsymb):
-        #     T = self.capacity_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
-        #     c_tmp.append(T[0])
-        #     RX_tmp.append(T[1])
-        #     RQ_tmp.append(T[2])
-        #
-        # c = tf.stack(c_tmp, axis=0)
-        # RX = tf.stack(RX_tmp, axis=0)
-        # RQ = tf.stack(RQ_tmp, axis=0)
-        # return c, RX, RQ
-
-        #  impl 2 with for and concat ------------------------
-        V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
-        selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
-        for ns in range(0, self.Nsymb, 10):
-            T = self.capacity_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
-            if (ns == 0):
-                c = tf.expand_dims(T[0], axis=0)
-                RX = tf.expand_dims(T[1], axis=0)
-                RQ = tf.expand_dims(T[2], axis=0)
-            else:
-                c = tf.concat([c, tf.expand_dims(T[0], axis=0)], axis=0)
-                RX = tf.concat([RX, tf.expand_dims(T[1], axis=0)], axis=0)
-                RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
-        return c, RX, RQ
+        if (self.mode == 'train' or self.mode == 'test'):
+            V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
+            selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
+            c = 0.
+            for ns in selected_symbols:
+                T = self.capacity_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
+                c = c + T / int(self.sampling_ratio_time_domain_keep * self.Nsymb)
+            return c
+        else: # eval
+            V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
+            for ns in tf.range(0, self.Nsymb, 10):
+                T = self.capacity_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
+                if (ns == 0):
+                    c = tf.expand_dims(T[0], axis=0)
+                    RX = tf.expand_dims(T[1], axis=0)
+                    RQ = tf.expand_dims(T[2], axis=0)
+                else:
+                    c = tf.concat([c, tf.expand_dims(T[0], axis=0)], axis=0)
+                    RX = tf.concat([RX, tf.expand_dims(T[1], axis=0)], axis=0)
+                    RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
+            return c, RX, RQ
 
 
     def capacity_forall_samples(self, bundeled_inputs_0):
-        # # impl with for ------------------------------------------------------------------------------------------------
-        # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [batch, Nsymb, k, ...]
-        # c_tmp = []
-        # RX_tmp = []
-        # RQ_tmp = []
-        # for ij in range(self.BATCHSIZE):
-        #     T = self.capacity_forall_symbols([V_D[ij,:], W_D[ij,:], H[ij,:], V_RF[ij,:], W_RF[ij,:], Lambda_B[ij,:], Lambda_U[ij,:]])
-        #     c_tmp.append(T[0])
-        #     RX_tmp.append(T[1])
-        #     RQ_tmp.append(T[2])
-        #
-        # c = tf.stack(c_tmp, axis=0)
-        # RX = tf.stack(RX_tmp, axis=0)
-        # RQ = tf.stack(RQ_tmp, axis=0)
-        #
-        # return -1.0*tf.reduce_mean(tf.reduce_mean(c, axis=0), axis=0), c, RX, RQ
+        if (self.mode == 'train' or self.mode == 'test'):
+            V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [batch, Nsymb, k, ...]
+            c = 0.
+            for ij in tf.range(self.BATCHSIZE):
+                T = self.capacity_forall_symbols([V_D[ij, :],
+                                                  W_D[ij, :],
+                                                  H[ij, :],
+                                                  V_RF[ij, :],
+                                                  W_RF[ij, :],
+                                                  Lambda_B[ij, :],
+                                                  Lambda_U[ij, :]])
+                c = c + T / self.BATCHSIZE
+            return -1.0 * c
 
+        else: # eval
+            V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [batch, Nsymb, k, ...]
+            for ij in tf.range(self.BATCHSIZE):
+                T = self.capacity_forall_symbols([V_D[ij, :],
+                                                  W_D[ij, :],
+                                                  H[ij, :],
+                                                  V_RF[ij, :],
+                                                  W_RF[ij, :],
+                                                  Lambda_B[ij, :],
+                                                  Lambda_U[ij, :]])
+                if (ij == 0):
+                    c = tf.expand_dims(T[0], axis=0)
+                    RX = tf.expand_dims(T[1], axis=0)
+                    RQ = tf.expand_dims(T[2], axis=0)
+                else:
+                    c = tf.concat([c, tf.expand_dims(T[0], axis=0)], axis=0)
+                    RX = tf.concat([RX, tf.expand_dims(T[1], axis=0)], axis=0)
+                    RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
 
-        # impl 2 with for and concat -----------------------------------------------------------------------------------
-        V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [batch, Nsymb, k, ...]
-        for ij in range(self.BATCHSIZE):
-            T = self.capacity_forall_symbols([V_D[ij, :],
-                                              W_D[ij, :],
-                                              H[ij, :],
-                                              V_RF[ij, :],
-                                              W_RF[ij, :],
-                                              Lambda_B[ij, :],
-                                              Lambda_U[ij, :]])
-            if (ij == 0):
-                c = tf.expand_dims(T[0], axis=0)
-                RX = tf.expand_dims(T[1], axis=0)
-                RQ= tf.expand_dims(T[2], axis=0)
-            else:
-                c = tf.concat([c , tf.expand_dims(T[0], axis=0)], axis=0)
-                RX = tf.concat([RX, tf.expand_dims(T[1], axis=0)], axis=0)
-                RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
-
-        return -1.0 * tf.reduce_mean(tf.reduce_mean(c, axis=0), axis=0), c, RX, RQ
+            return -1.0 * tf.reduce_mean(tf.reduce_mean(c, axis=0), axis=0), c, RX, RQ
