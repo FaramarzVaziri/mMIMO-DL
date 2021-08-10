@@ -35,11 +35,11 @@ if __name__ == '__main__':
 
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 8
-    test_dataset_size = 8
-    eval_dataset_size = 8
+    train_dataset_size = 1024
+    test_dataset_size = 128
+    eval_dataset_size = 128
     width_of_network = 1
-    BATCHSIZE = 4
+    BATCHSIZE = 128
     L_rate =  1e-3
     dropout_rate = 0.5
     precision_fixer = 1e-6
