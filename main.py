@@ -5,7 +5,7 @@ import scipy.io as sio
 import tensorflow as tf
 import numpy as np
 
-tf.config.run_functions_eagerly(True)
+# tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
@@ -38,10 +38,10 @@ if __name__ == '__main__':
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 102400
-    test_dataset_size = 1024
-    eval_dataset_size = 1024
+    test_dataset_size = 128
+    eval_dataset_size = 128
     width_of_network = 1
-    BATCHSIZE = 4
+    BATCHSIZE = 2
     L_rate =  1e-3
     dropout_rate = 0.5
     precision_fixer = 1e-6
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model_pre_training.fit(the_dataset_train,
-                                  epochs=2, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=2) #
+                                  epochs=5, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')

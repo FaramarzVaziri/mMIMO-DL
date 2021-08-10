@@ -50,7 +50,7 @@ class ML_model_class(tf.keras.Model):
         self.activation = activation
         self.phase_noise = phase_noise
 
-    @tf.function
+    
     def train_step(self, inputs0):
         H_complex, H = inputs0
         with tf.GradientTape() as tape:
@@ -65,7 +65,7 @@ class ML_model_class(tf.keras.Model):
         return {"neg_capacity_train_loss": loss_metric.result()}
 
     # see https://keras.io/api/models/model_training_apis/ for validation
-    @tf.function
+    
     def test_step(self, inputs0):
         H_complex, H_tilde_0, Lambda_B, Lambda_U = inputs0
         V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(H_tilde_0, training=False)
@@ -79,7 +79,7 @@ class ML_model_class(tf.keras.Model):
         # print(capacity_value)
         return {"neg_capacity_test_loss": loss_metric_test.result() , 'neg_capacity_performance_metric': capacity_metric_test.result()}
 
-    @tf.function
+    
     def evaluation_of_proposed_beamformer(self):
         obj_dataset_1 = dataset_generator_class(self.N_b_a, self.N_b_rf, self.N_u_a, self.N_u_rf, self.N_s, self.K,
                                                    self.SNR, self.P, self.N_c, self.N_scatterers,
@@ -136,7 +136,7 @@ class ML_model_class(tf.keras.Model):
                tf.math.real(tf.squeeze(tf.concat(RX_tmp, axis = 0))),\
                tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
 
-    @tf.function
+    
     def evaluation_of_Sohrabis_beamformer(self):
         if (self.on_what_device == 'cpu'):
             dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
