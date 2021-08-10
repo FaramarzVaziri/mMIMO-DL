@@ -123,7 +123,8 @@ class ML_model_class(tf.keras.Model):
                 'Lambda_B': LLLambda_B,
                 'Lambda_U': LLLambda_U}
 
-        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/data_set_for_matlab.mat",mdic)
+        # sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/data_set_for_matlab.mat",mdic)
+        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_set_for_matlab.mat",mdic)
 
         return tf.squeeze(C),\
                tf.squeeze(tf.concat(C_tmp, axis = 0)),\
@@ -131,7 +132,10 @@ class ML_model_class(tf.keras.Model):
                tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
 
     def evaluation_of_Sohrabis_beamformer(self):
+
+        # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
         dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
+
         obj_dataset_2 = dataset_generator_class(self.N_b_a, self.N_b_rf, self.N_u_a, self.N_u_rf, self.N_s, self.K,
                                                    self.SNR, self.P, self.N_c, self.N_scatterers,
                                                    self.angular_spread_rad, self.wavelength,
