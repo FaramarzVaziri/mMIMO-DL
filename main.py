@@ -37,9 +37,9 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 8
-    test_dataset_size = 8
-    eval_dataset_size = 8
+    train_dataset_size = 102400
+    test_dataset_size = 1024
+    eval_dataset_size = 1024
     width_of_network = 1
     BATCHSIZE = 4
     L_rate =  1e-3

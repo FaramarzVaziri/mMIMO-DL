@@ -83,7 +83,7 @@ class dataset_generator_class:
                               mean=0.0,
                               stddev=self.PHN_innovation_std,
                               dtype=tf.float32,
-                              seed=None,
+                              seed=None, 
                               name=None)
             PHN_time = tf.math.cumsum(T0)
             PHN_time_reshaped = tf.reshape(PHN_time, shape=[N_symbols, self.K])
