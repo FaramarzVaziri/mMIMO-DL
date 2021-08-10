@@ -12,7 +12,7 @@ capacity_metric_test = tf.keras.metrics.Mean(name='neg_capacity_performance_metr
 class ML_model_class(tf.keras.Model):
 
     def __init__(self, model_dnn, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, mat_fname, eval_dataset_size, mode):
+                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, mat_fname, eval_dataset_size, mode, on_what_device):
         super(ML_model_class, self).__init__()
         self.model_dnn = model_dnn
         self.N_b_a = N_b_a
@@ -40,6 +40,7 @@ class ML_model_class(tf.keras.Model):
         self.eval_dataset_size = eval_dataset_size
         self.PHN_innovation_std = PHN_innovation_std
         self.mode = mode
+        self.on_what_device = on_what_device
 
     def compile(self, optimizer, loss, activation, phase_noise, metric_capacity_in_presence_of_phase_noise):
         super(ML_model_class, self).compile()
@@ -49,6 +50,7 @@ class ML_model_class(tf.keras.Model):
         self.activation = activation
         self.phase_noise = phase_noise
 
+    @tf.function
     def train_step(self, inputs0):
         H_complex, H = inputs0
         with tf.GradientTape() as tape:
@@ -63,6 +65,7 @@ class ML_model_class(tf.keras.Model):
         return {"neg_capacity_train_loss": loss_metric.result()}
 
     # see https://keras.io/api/models/model_training_apis/ for validation
+    @tf.function
     def test_step(self, inputs0):
         H_complex, H_tilde_0, Lambda_B, Lambda_U = inputs0
         V_D_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx = self.model_dnn(H_tilde_0, training=False)
@@ -76,6 +79,7 @@ class ML_model_class(tf.keras.Model):
         # print(capacity_value)
         return {"neg_capacity_test_loss": loss_metric_test.result() , 'neg_capacity_performance_metric': capacity_metric_test.result()}
 
+    @tf.function
     def evaluation_of_proposed_beamformer(self):
         obj_dataset_1 = dataset_generator_class(self.N_b_a, self.N_b_rf, self.N_u_a, self.N_u_rf, self.N_s, self.K,
                                                    self.SNR, self.P, self.N_c, self.N_scatterers,
@@ -122,19 +126,22 @@ class ML_model_class(tf.keras.Model):
                 "H_tilde_0": HHH_tilde_0,
                 'Lambda_B': LLLambda_B,
                 'Lambda_U': LLLambda_U}
-
-        # sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/data_set_for_matlab.mat",mdic)
-        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_set_for_matlab.mat",mdic)
+        if (self.on_what_device == 'cpu'):
+            sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/data_set_for_matlab.mat",mdic)
+        else:
+            sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_set_for_matlab.mat",mdic)
 
         return tf.squeeze(C),\
                tf.squeeze(tf.concat(C_tmp, axis = 0)),\
                tf.math.real(tf.squeeze(tf.concat(RX_tmp, axis = 0))),\
                tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
 
+    @tf.function
     def evaluation_of_Sohrabis_beamformer(self):
-
-        # dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
-        dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
+        if (self.on_what_device == 'cpu'):
+            dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
+        else:
+            dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
         obj_dataset_2 = dataset_generator_class(self.N_b_a, self.N_b_rf, self.N_u_a, self.N_u_rf, self.N_s, self.K,
                                                    self.SNR, self.P, self.N_c, self.N_scatterers,

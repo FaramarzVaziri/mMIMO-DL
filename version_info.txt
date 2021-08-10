@@ -1,18 +1,23 @@
-- the phase noised loss functione is now fully serialized and there is no map_fn anywhere in the loss and datagenerator functions
+Aug 2: 
 
-
-
-
-
-
-
-
--to deal with the large Lambda matrix issue (102400*50*4*4*4*32/1e9 = 10 Gbits) in the dataset generation step,
+- to deal with the large Lambda matrix issue (102400*50*4*4*4*32/1e9 = 10 Gbits) in the dataset generation step,
  I just produce lambda only for the batches on the test dataset when I want to measure the test error and then
  produce H_tilde_0 and feed the trained network with that and measure performance in presence of phase noise
 
 -In summary, now I train using only the phase noise free channel (H) and phase noise free loss function to 
 train and every 10 epochs I do two tests 1) loss_phase_noise_free(H_tilde_0) and 2) loss_phased_noised(H_tilde_0)
 
+Aug-6 : 
+the phase noised loss functione is now fully serialized and there is no map_fn anywhere in the loss and datagenerator functions
+
+
+Aug - 7:
 - In this version, I also create the code for producing box charts
-- I am also uncertain about using tf.funciton and tf.map_fn
+
+
+current version:
+ Aug-10:
+ - after talking to Ehsan Amjadian, I realized that I need to use eager exec all the time
+ - I should replace list appends with tf.concat
+ - I should get rid of all castings
+   In this version I use eager exec and tf.concat

@@ -31,7 +31,7 @@ from loss_sequential_phase_noised import sequential_loss_phase_noised_class
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
-    print('The main code for running on this computer')
+    on_what_device = 'cpu'
 
     print('tf version', tf.version.VERSION)
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -81,12 +81,14 @@ if __name__ == '__main__':
 
     PHN_innovation_std = np.sqrt(1024/4)*np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
     print('PHN_innovation_std = ', PHN_innovation_std)
-    #
-    # dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
-    # dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
 
-    dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
-    dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
+    if (on_what_device == 'cpu'):
+        dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
+        dataset_for_testing_sohrabi = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_testing_Sohrabi.mat'
+    else:
+        dataset_name = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_training_ML.mat'
+        dataset_for_testing_sohrabi = '/data/jabbarva/github_repo/mMIMO-DL/datasets/DS_for_py_for_testing_Sohrabi.mat'
+
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 4 / K
@@ -157,7 +159,7 @@ if __name__ == '__main__':
 
     # D. Training
     obj_ML_model_pre_training = ML_model_class(the_CNN_model,N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, dataset_name, eval_dataset_size, 'train')
+                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, dataset_name, eval_dataset_size, 'train', on_what_device)
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
     tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
@@ -181,8 +183,7 @@ if __name__ == '__main__':
     print('STEP 4: Training in absence of phase noise has started.')
     start_time = time.time()
     obj_ML_model_pre_training.fit(the_dataset_train,
-                                  epochs=2, callbacks=[reduce_lr])
-                                  # ,validation_data=the_dataset_test, validation_freq=1,verbose=1) #
+                                  epochs=2, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=2) #
 
     end_time_1 = time.time()
     print("elapsed time of pre-training = ", (end_time_1 - start_time), ' seconds')
@@ -209,9 +210,11 @@ if __name__ == '__main__':
             "L": L,
             'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
             'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
+    if (on_what_device == 'cpu'):
+        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts.mat", mdic)
+    else:
+        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_for_boxcharts.mat", mdic)
 
-    sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts.mat",
-                mdic)
     end_time_2 = time.time()
     print("elapsed time for box-chart evaluation = ", (end_time_2 - start_time_2), ' seconds')
 
@@ -235,13 +238,13 @@ if __name__ == '__main__':
             "L": L,
             'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
             'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
-    sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts_sohrabis.mat",
-                mdic)
+    if (on_what_device == 'cpu'):
+        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts_sohrabis.mat", mdic)
+    else:
+        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_for_boxcharts_sohrabis.mat", mdic)
+
     end_time_3 = time.time()
     print("elapsed time for box-chart evaluation of Sohrabis = ", (end_time_3 - start_time_3), ' seconds')
-
-
-
 
 
 

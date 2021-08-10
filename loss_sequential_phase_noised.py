@@ -27,14 +27,14 @@ class sequential_loss_phase_noised_class:
         self.sampling_ratio_time_domain_keep = sampling_ratio_time_domain_keep
         self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
 
-    
+    @tf.function
     def cyclical_shift(self, Lambda_matrix, k, flip):
         if flip == True:  # k-q
             return tf.roll(tf.reverse(Lambda_matrix, axis=[0]), shift=tf.squeeze(k) + 1, axis=0)
         else:  # q-k
             return tf.roll(Lambda_matrix, shift=tf.squeeze(k), axis=0)
 
-    
+    @tf.function
     def non_zero_element_finder_for_H_tilde(self, k, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int(
@@ -56,7 +56,7 @@ class sequential_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    
+    @tf.function
     def Rx_per_k(self, bundeled_inputs_0):
         V_D_k, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0 # [k, ...]
 
@@ -79,7 +79,7 @@ class sequential_loss_phase_noised_class:
         return RX_k
 
     # R_Q calculations /////////////////////////////////////////////////////////////////////////////////////////////////
-    
+    @tf.function
     def non_zero_element_finder_for_H_hat(self, k, m, truncation_ratio_keep):
         z = 1 - truncation_ratio_keep
         B_orig = int( self.K / 2. - z * self.K / 2.)  # original position of zero starting in the fft sequence of phase noise
@@ -101,7 +101,7 @@ class sequential_loss_phase_noised_class:
                                                      mask_of_ones_after_shift_flip_false)
         return mask_of_ones_after_shift_total
 
-    
+    @tf.function
     def R_I_Q_m_k(self, bundeled_inputs_0):
         V_D_m, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k, m = bundeled_inputs_0
         if (m == k):
@@ -124,7 +124,7 @@ class sequential_loss_phase_noised_class:
             R = tf.linalg.matmul(B_m_k, B_m_k, adjoint_a=False, adjoint_b=True)
         return R
 
-    
+    @tf.function
     def R_N_Q_m_k(self, bundeled_inputs_0):
         Lambda_U_k_sub_m_mod_K, W_D_k, W_RF = bundeled_inputs_0
         T0 = tf.linalg.matmul(W_D_k, W_RF, adjoint_a=True, adjoint_b=True)
@@ -132,7 +132,7 @@ class sequential_loss_phase_noised_class:
         R = self.sigma2 * tf.linalg.matmul(C_m_k, C_m_k, adjoint_a=False, adjoint_b=True)
         return R
 
-    
+    @tf.function
     def Rq_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0 # [k, ...]
         RQ = tf.zeros(shape= [self.N_s, self.N_s], dtype=tf.complex64)
@@ -141,7 +141,7 @@ class sequential_loss_phase_noised_class:
                       tf.cast(self.R_I_Q_m_k([V_D[m,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k, m]), tf.complex64)))
         return RQ
 
-    
+    @tf.function
     def capacity_and_RX_RQ_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0 # [k, ...]
         RX = self.Rx_per_k([V_D[k,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k])
@@ -159,7 +159,7 @@ class sequential_loss_phase_noised_class:
                        lambda: tf.divide(tf.math.log(T3), tf.math.log(2.0)),
                        lambda: tf.multiply(eta, T3)), RX, RQ
 
-    
+    @tf.function
     def capacity_forall_k(self, bundeled_inputs_0):
         # # impl with for ------------------------
         # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [k, ...]
@@ -193,6 +193,7 @@ class sequential_loss_phase_noised_class:
 
         return c, RX, RQ
 
+    @tf.function
     def capacity_forall_symbols(self, bundeled_inputs_0):
         # #  impl with for
         # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
@@ -214,7 +215,7 @@ class sequential_loss_phase_noised_class:
         #  impl 2 with for and concat ------------------------
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
         selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
-        for ns in range(0, self.Nsymb):
+        for ns in range(0, self.Nsymb, 10):
             T = self.capacity_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
             if (ns == 0):
                 c = tf.expand_dims(T[0], axis=0)
@@ -226,8 +227,7 @@ class sequential_loss_phase_noised_class:
                 RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
         return c, RX, RQ
 
-
-
+    @tf.function
     def capacity_forall_samples(self, bundeled_inputs_0):
         # # impl with for ------------------------------------------------------------------------------------------------
         # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [batch, Nsymb, k, ...]

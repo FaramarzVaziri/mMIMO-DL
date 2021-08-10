@@ -239,7 +239,7 @@ class CNN_model_class:
 
 
     # sequential implementation
-    
+    @tf.function
     def custom_actication(self, inputs):
         V_D, W_D, vrf, wrf = inputs
 
@@ -249,9 +249,6 @@ class CNN_model_class:
         wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
 
         # partially-connected analog beamformer matrix implementation ----------------
-        V_RF_list_forall_samples = []
-        W_RF_list_forall_samples = []
-        V_D_new_forall_samples = []
 
         for ij in range(self.BATCHSIZE):
             # partially-connected analog beamformer matrix implementation --------------
@@ -261,31 +258,41 @@ class CNN_model_class:
                                          tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
             # print('vrf_zero_padded', vrf_zero_padded.shape)
             r_bs = int(self.N_b_a / self.N_b_rf)
-            T2_BS = []
             for i in range(self.N_b_rf):
                 T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
                 # print('T0_BS', T0_BS.shape)
                 T1_BS = tf.roll(T0_BS, shift=i, axis=1)
                 # print('T1_BS', T1_BS.shape)
-                T2_BS.append(T1_BS)
-            V_RF_per_sample = tf.concat(T2_BS, axis=0)
-            # print('V_RF_per_sample', V_RF_per_sample.shape)
-            V_RF_list_forall_samples.append(V_RF_per_sample)
+                if (i == 0):
+                    V_RF_per_sample = T1_BS
+                else:
+                    V_RF_per_sample = tf.concat([V_RF_per_sample, T1_BS], axis=0)
+
+            if (ij == 0):
+                V_RF_cplx = tf.expand_dims(V_RF_per_sample, axis=0)
+            else:
+                V_RF_cplx = tf.concat([V_RF_cplx, tf.expand_dims(V_RF_per_sample, axis=0)], axis=0)
 
             # for UE
             wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx[ij, :], shape=[self.N_u_a, 1]),
                                          tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
             r_ue = int(self.N_u_a / self.N_u_rf)
-            T2_UE = []
+
             for i in range(self.N_u_rf):
                 T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
                 T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-                T2_UE.append(T1_UE)
-            W_RF_per_sample = tf.concat(T2_UE, axis=0)
-            W_RF_list_forall_samples.append(W_RF_per_sample)
+                if (i==0):
+                    W_RF_per_sample = T1_UE
+                else:
+                    W_RF_per_sample = tf.concat([W_RF_per_sample, T1_UE], axis=0)
+
+            if (ij == 0):
+                W_RF_cplx = tf.expand_dims(W_RF_per_sample, axis=0)
+            else:
+                W_RF_cplx = \
+                    tf.concat([W_RF_cplx, tf.expand_dims(W_RF_per_sample, axis=0)], axis=0)
 
             # per subcarrier power normalization ---------------------------------------
-            V_D_new_per_sample = []
             # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
             for k in range(self.K):
                 T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
@@ -295,19 +302,20 @@ class CNN_model_class:
                                                     #           1e-16))  ####################################################### numeric precision flaw
                 # denum = tf.linalg.trace(T1)
                 # V_D_new_forall_samples.append(tf.divide( tf.multiply(V_D_cplx[ij,:,:,:] , tf.cast(tf.sqrt(P) ,dtype=tf.complex64)) , tf.sqrt(denum)))
-                V_D_new_per_sample.append(
-                    tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
-                              tf.sqrt(denum)))
-            V_D_new_forall_samples.append(tf.stack(V_D_new_per_sample, axis=0))
+                if (k == 0):
+                    V_D_new_forall_k = tf.expand_dims(tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
+                                   tf.sqrt(denum)), axis=0)
+                else:
+                    V_D_new_forall_k = tf.concat([V_D_new_forall_k, tf.expand_dims(tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
+                                   tf.sqrt(denum)), axis=0)], axis=0)
 
-        V_RF_cplx = tf.stack(V_RF_list_forall_samples, axis=0)
-        W_RF_cplx = tf.stack(W_RF_list_forall_samples, axis=0)
-        V_D_new = tf.stack(V_D_new_forall_samples, axis=0)
+            if (ij == 0):
+                V_D_new = tf.expand_dims(V_D_new_forall_k, axis=0)
+            else:
+                V_D_new = tf.concat([V_D_new, tf.expand_dims(V_D_new_forall_k, axis=0)], axis=0)
 
-        # print(V_RF_cplx.shape)
 
         return V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx
-
 
 
     # # map_fn implementation
