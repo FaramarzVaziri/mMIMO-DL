@@ -239,7 +239,7 @@ class CNN_model_class:
 
 
     # sequential implementation
-    @tf.function
+
     def custom_actication(self, inputs):
         V_D, W_D, vrf, wrf = inputs
 

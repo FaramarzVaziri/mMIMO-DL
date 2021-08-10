@@ -227,7 +227,7 @@ class sequential_loss_phase_noised_class:
                 RQ = tf.concat([RQ, tf.expand_dims(T[2], axis=0)], axis=0)
         return c, RX, RQ
 
-    @tf.function
+
     def capacity_forall_samples(self, bundeled_inputs_0):
         # # impl with for ------------------------------------------------------------------------------------------------
         # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [batch, Nsymb, k, ...]

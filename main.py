@@ -5,7 +5,7 @@ import scipy.io as sio
 import tensorflow as tf
 import numpy as np
 
-# tf.config.run_functions_eagerly(True)
+tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
 # tf.distribute.Strategy
 
@@ -37,11 +37,11 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 102400
-    test_dataset_size = 128
-    eval_dataset_size = 128
+    train_dataset_size = 8
+    test_dataset_size = 8
+    eval_dataset_size = 8
     width_of_network = 1
-    BATCHSIZE = 2
+    BATCHSIZE = 4
     L_rate =  1e-3
     dropout_rate = 0.5
     precision_fixer = 1e-6
@@ -162,7 +162,7 @@ if __name__ == '__main__':
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, dataset_name, eval_dataset_size, 'train', on_what_device)
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
-    tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
+    # tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
     print(the_CNN_model.summary())
     obj_ML_model_pre_training.compile(
         optimizer=optimizer_1,

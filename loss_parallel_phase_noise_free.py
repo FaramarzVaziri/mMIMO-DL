@@ -61,7 +61,7 @@ class loss_parallel_phase_noise_free_class:
                         self.C_per_sample_per_k([V_D_cplx[k,:], W_D_cplx[k,:], H_complex[k,:], V_RF_cplx, W_RF_cplx]))
         return T0/self.K
 
-    @tf.function
+
     def ergodic_capacity(self, bundeled_inputs):
         # impl 1
         # V_D_cplx, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx = bundeled_inputs
