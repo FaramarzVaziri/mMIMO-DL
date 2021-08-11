@@ -76,7 +76,7 @@ class sequential_loss_phase_noised_class:
         T1 = tf.linalg.matmul(T0, H_tilde_k)
         T2 = tf.linalg.matmul(T1, V_RF)
         A_ns_k = tf.linalg.matmul(T2, V_D_k)
-        RX_k = tf.linalg.matmul(A_ns_k, A_ns_k, adjoint_a=False, adjoint_b=True)
+        RX_k = tf.cast(tf.linalg.matmul(A_ns_k, A_ns_k, adjoint_a=False, adjoint_b=True), dtype=tf.float32)
         return RX_k
 
     # R_Q calculations /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ class sequential_loss_phase_noised_class:
     def R_I_Q_m_k(self, bundeled_inputs_0):
         V_D_m, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, k, m = bundeled_inputs_0
         if (m == k):
-            R = tf.zeros(shape= [self.N_s, self.N_s], dtype=tf.complex64)
+            R = tf.zeros(shape= [self.N_s, self.N_s], dtype=tf.float32)
         else:
             mask_of_ones = self.non_zero_element_finder_for_H_hat(k, m, self.truncation_ratio_keep)
             H_masked = tf.boolean_mask(H, mask= mask_of_ones, axis=0)
@@ -136,10 +136,10 @@ class sequential_loss_phase_noised_class:
     
     def Rq_per_k(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0 # [k, ...]
-        RQ = tf.zeros(shape= [self.N_s, self.N_s], dtype=tf.complex64)
+        RQ = tf.zeros(shape= [self.N_s, self.N_s], dtype=tf.float32)
         for m in tf.range(self.K):
-            RQ = tf.add(RQ, tf.add( tf.cast(self.R_N_Q_m_k([Lambda_U[tf.math.floormod(k - m, self.K), :], W_D[k,:], W_RF]), tf.complex64),
-                      tf.cast(self.R_I_Q_m_k([V_D[m,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k, m]), tf.complex64)))
+            RQ = tf.add(RQ, tf.add( tf.cast(self.R_N_Q_m_k([Lambda_U[tf.math.floormod(k - m, self.K), :], W_D[k,:], W_RF]), tf.float32),
+                      tf.cast(self.R_I_Q_m_k([V_D[m,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k, m]), tf.float32)))
         return RQ
 
     
@@ -147,13 +147,13 @@ class sequential_loss_phase_noised_class:
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k = bundeled_inputs_0 # [k, ...]
         RX = self.Rx_per_k([V_D[k,:], W_D[k,:], H, V_RF, W_RF, Lambda_B, Lambda_U, k])
         RQ = self.Rq_per_k([V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, k])
-        precision_fixer = 1e-7
-        RQ = tf.add(precision_fixer * tf.eye(self.N_s, dtype=tf.complex64), RQ)  # numeric precision flaw
-        T0 = tf.cond(tf.equal(tf.zeros([1], dtype=tf.complex64), tf.linalg.det(RQ)),
-                     lambda: tf.multiply(tf.zeros([1], dtype=tf.complex64), RQ),
+        precision_fixer = 1e-10
+        RQ = tf.add(precision_fixer * tf.eye(self.N_s, dtype=tf.float32), RQ)  # numeric precision flaw
+        T0 = tf.cond(tf.equal(tf.zeros([1], dtype=tf.float32), tf.linalg.det(RQ)),
+                     lambda: tf.multiply(tf.zeros([1], dtype=tf.float32), RQ),
                      lambda: tf.linalg.inv(RQ))
         T1 = tf.linalg.matmul(T0, RX, adjoint_a=False, adjoint_b=False)
-        T2 = tf.add(tf.eye(self.N_s, dtype=tf.complex64), T1)
+        T2 = tf.add(tf.eye(self.N_s, dtype=tf.float32), T1)
         T3 = tf.math.real(tf.linalg.det(T2))
         eta = 0.
         if (self.mode == 'train' or self.mode == 'test'):
@@ -163,7 +163,7 @@ class sequential_loss_phase_noised_class:
         else: # eval
             return tf.cond(tf.less(0.0, T3),
                            lambda: tf.divide(tf.math.log(T3), tf.math.log(2.0)),
-                           lambda: tf.multiply(eta, T3)), RX, RQ
+                           lambda: tf.multiply(eta, T3)),       RX, RQ
     
     def capacity_forall_k(self, bundeled_inputs_0):
         if (self.mode == 'train' or self.mode == 'test'):
@@ -229,6 +229,7 @@ class sequential_loss_phase_noised_class:
 
         else: # eval
             V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [batch, Nsymb, k, ...]
+            # print('in loss:', V_D.shape, W_D.shape, H.shape, V_RF.shape, W_RF.shape, Lambda_B.shape, Lambda_U.shape)
             for ij in tf.range(self.BATCHSIZE):
                 T = self.capacity_forall_symbols([V_D[ij, :],
                                                   W_D[ij, :],

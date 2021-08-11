@@ -33,13 +33,13 @@ from loss_sequential_phase_noised import sequential_loss_phase_noised_class
 if __name__ == '__main__':
     on_what_device = 'cpu'
 
-    print('tf version', tf.version.VERSION)
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print('-- tf version', tf.version.VERSION)
+    print("-- Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 102400
-    test_dataset_size = 128
-    eval_dataset_size = 128
+    train_dataset_size = 1024
+    test_dataset_size = 32
+    eval_dataset_size = 32
     width_of_network = 1
     BATCHSIZE = 32
     L_rate =  1e-3
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
 
     PHN_innovation_std = np.sqrt(1024/4)*np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
-    print('PHN_innovation_std = ', PHN_innovation_std)
+    print('-- PHN_innovation_std = ', PHN_innovation_std)
 
     if (on_what_device == 'cpu'):
         dataset_name = 'C:/Users/jabba/Videos/datasets/DS_for_py_for_training_ML.mat'
@@ -112,7 +112,6 @@ if __name__ == '__main__':
     the_dataset_test = obj_dataset_test.dataset_generator()
     print('-- Dataset creation is done.')
 
-
     obj_CNN_model = CNN_model_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad,
                                     wavelength, d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep,
                                     Nsymb, Ts, fc, c, dataset_name, train_dataset_size, width_of_network, dropout_rate)
@@ -122,8 +121,7 @@ if __name__ == '__main__':
     obj_loss_parallel_phase_noise_free = loss_parallel_phase_noise_free_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
                                                                               SNR, P, N_c, N_scatterers,
                                                                               angular_spread_rad, wavelength, d,
-                                                                              BATCHSIZE,
-                                                                              phase_shift_stddiv)
+                                                                              BATCHSIZE)
     the_loss_function = obj_loss_parallel_phase_noise_free.ergodic_capacity
     print('-- phase noise free loss function created')
 
@@ -132,19 +130,22 @@ if __name__ == '__main__':
     capacity_metric = obj_capacity_metric.capacity_forall_samples
     print('-- capacity metric with phase noise is created')
 
-    obj_ML_model_pre_training = ML_model_class(the_CNN_model,N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std, dataset_name, eval_dataset_size, 'train', on_what_device, False)
+    obj_ML_model_pre_training = ML_model_class(the_CNN_model,N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
+                                               N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE,
+                                               phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c,
+                                               PHN_innovation_std, dataset_name, eval_dataset_size, 'train',
+                                               on_what_device, False)
     optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate, clipnorm=1.)
     # optimizer = tf.keras.optimizers.SGD(learning_rate = L_rate , clipnorm=1.0) #0.0001
     # tf.keras.utils.plot_model(the_CNN_model, show_shapes=True, show_layer_names=True, to_file='model.png')
-    # print(the_CNN_model.summary())
+    print(the_CNN_model.summary())
     obj_ML_model_pre_training.compile(
         optimizer=optimizer_1,
         loss=the_loss_function,
         activation=obj_CNN_model.custom_actication,
         phase_noise='n',
         metric_capacity_in_presence_of_phase_noise= capacity_metric)
-    print('--  ML model is created')
+    print('-- ML model is created')
 
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss', factor=0.1, patience=1, min_lr=1e-8,
                                                      mode='min', verbose=1)
@@ -157,15 +158,14 @@ if __name__ == '__main__':
 
     start_time = time.time()
     obj_ML_model_pre_training.fit(the_dataset_train,
-                                  epochs=1, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
+                                  epochs=10, callbacks=[reduce_lr])#, validation_data=the_dataset_test, validation_freq=1, verbose=1) #
 
     end_time_1 = time.time()
-    print("pre-training is done. (elapsed time = ", (end_time_1 - start_time), ' s)')
+    print("-- pre-training is done. (elapsed time = ", (end_time_1 - start_time), ' s)')
 
+
+    print('-- Evaluation of the proposed pre-trained network has started')
     start_time_2 = time.time()
-    obj_sequential_loss_phase_noised_class_accurate = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                 d, BATCHSIZE, 1, Nsymb, 1, 1, 'eval')
-    the_loss_function_phn_accurate = obj_sequential_loss_phase_noised_class_accurate.capacity_forall_samples
 
     C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples\
         = obj_ML_model_pre_training.evaluation_of_proposed_beamformer()
@@ -184,46 +184,39 @@ if __name__ == '__main__':
             'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
             'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
     if (on_what_device == 'cpu'):
-        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts.mat", mdic)
+        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/evaluation_data_pre.mat", mdic)
     else:
-        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_for_boxcharts.mat", mdic)
+        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/evaluation_data_pre.mat", mdic)
 
     end_time_2 = time.time()
     print('-- proposed pre-trained model is evaluated and data stored for matlab box-charts. (elapsed time =', (end_time_2 - start_time_2), ' seconds')
 
 
 
-    # # Evaluation of Sohrabi's method
-    # start_time_3 = time.time()
-    # C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples\
-    #     = obj_ML_model_pre_training.evaluation_of_Sohrabis_beamformer()
-    # # print('C: ', C)
-    # # print('capacity_sequence_in_frame_forall_samples : ', capacity_sequence_in_frame_forall_samples)
-    # # print('RX_forall_k_forall_OFDMs_forall_samples : ', RX_forall_k_forall_OFDMs_forall_samples)
-    # # print('RQ_forall_k_forall_OFDMs_forall_samples : ', RQ_forall_k_forall_OFDMs_forall_samples)
-    #
-    # C_samples_x_OFDM_index = capacity_sequence_in_frame_forall_samples.numpy()
-    # RX_forall_k_forall_OFDMs_forall_samples = RX_forall_k_forall_OFDMs_forall_samples.numpy()
-    # RQ_forall_k_forall_OFDMs_forall_samples = RQ_forall_k_forall_OFDMs_forall_samples.numpy()
-    #
-    # mdic = {"C_samples_x_OFDM_index": C_samples_x_OFDM_index,
-    #         "L": L,
-    #         'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
-    #         'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
-    # if (on_what_device == 'cpu'):
-    #     sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/data_for_boxcharts_sohrabis.mat", mdic)
-    # else:
-    #     sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_for_boxcharts_sohrabis.mat", mdic)
-    #
-    # end_time_3 = time.time()
-    # print('-- Sohrabis method is evaluated and data stored for matlab box-charts. (elapsed time =', (end_time_2 - start_time_2), ' seconds')
+    # Evaluation of Sohrabi's method
+    start_time_3 = time.time()
+    C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples\
+        = obj_ML_model_pre_training.evaluation_of_Sohrabis_beamformer()
+    # print('C: ', C)
+    # print('capacity_sequence_in_frame_forall_samples : ', capacity_sequence_in_frame_forall_samples)
+    # print('RX_forall_k_forall_OFDMs_forall_samples : ', RX_forall_k_forall_OFDMs_forall_samples)
+    # print('RQ_forall_k_forall_OFDMs_forall_samples : ', RQ_forall_k_forall_OFDMs_forall_samples)
 
+    C_samples_x_OFDM_index = capacity_sequence_in_frame_forall_samples.numpy()
+    RX_forall_k_forall_OFDMs_forall_samples = RX_forall_k_forall_OFDMs_forall_samples.numpy()
+    RQ_forall_k_forall_OFDMs_forall_samples = RQ_forall_k_forall_OFDMs_forall_samples.numpy()
 
+    mdic = {"C_samples_x_OFDM_index": C_samples_x_OFDM_index,
+            "L": L,
+            'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
+            'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
+    if (on_what_device == 'cpu'):
+        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/evaluation_data_Sohrabi.mat", mdic)
+    else:
+        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/evaluation_data_Sohrabi.mat", mdic)
 
-
-
-
-
+    end_time_3 = time.time()
+    print('-- Sohrabis method is evaluated and data stored for matlab box-charts. (elapsed time =', (end_time_3 - start_time_3), ' seconds')
 
 
 
@@ -236,7 +229,7 @@ if __name__ == '__main__':
                                                 c, PHN_innovation_std, dataset_name, train_dataset_size, 'train', 'yes')
     the_dataset_train_phn = obj_dataset_train_phn.dataset_generator()
 
-    print('phase-noised Dataset is created.')
+    print('-- phase-noised Dataset is created.')
 
     obj_loss_phase_noised_approx = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
                                                                       N_scatterers, angular_spread_rad, wavelength,
@@ -270,11 +263,42 @@ if __name__ == '__main__':
 
 
     # FIT
-    print('Training in presence of phase noise has started.')
+    print('-- Training in presence of phase noise has started.')
     start_time = time.time()
     obj_ML_model_post_training.fit(the_dataset_train_phn,
-                                  epochs=1, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
+                                  epochs=2, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
 
     end_time_1 = time.time()
-    print("elapsed time of post-training = ", (end_time_1 - start_time), ' seconds')
+    print("-- elapsed time of post-training = ", (end_time_1 - start_time), ' seconds')
+
+
+    print('-- Evaluation of the proposed post-trained network has started')
+    start_time_4 = time.time()
+    obj_sequential_loss_phase_noised_class_accurate = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
+                 d, BATCHSIZE, 1, Nsymb, 1, 1, 'eval')
+    the_loss_function_phn_accurate = obj_sequential_loss_phase_noised_class_accurate.capacity_forall_samples
+
+    C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples\
+        = obj_ML_model_pre_training.evaluation_of_proposed_beamformer()
+
+    # print('C: ', C)
+    # print('capacity_sequence_in_frame_forall_samples : ', capacity_sequence_in_frame_forall_samples)
+    # print('RX_forall_k_forall_OFDMs_forall_samples : ', RX_forall_k_forall_OFDMs_forall_samples)
+    # print('RQ_forall_k_forall_OFDMs_forall_samples : ', RQ_forall_k_forall_OFDMs_forall_samples)
+
+    C_samples_x_OFDM_index = capacity_sequence_in_frame_forall_samples.numpy()
+    RX_forall_k_forall_OFDMs_forall_samples = RX_forall_k_forall_OFDMs_forall_samples.numpy()
+    RQ_forall_k_forall_OFDMs_forall_samples = RQ_forall_k_forall_OFDMs_forall_samples.numpy()
+
+    mdic = {"C_samples_x_OFDM_index": C_samples_x_OFDM_index,
+            "L": L,
+            'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
+            'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
+    if (on_what_device == 'cpu'):
+        sio.savemat("C:/Users/jabba/Google Drive/Main/Codes/ML_MIMO_new_project/Matlab_projects/evaluation_data_post.mat", mdic)
+    else:
+        sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/evaluation_data_post.mat", mdic)
+
+    end_time_4 = time.time()
+    print('-- proposed pre-trained model is evaluated and data stored for matlab box-charts. (elapsed time =', (end_time_4 - start_time_4), ' seconds')
 

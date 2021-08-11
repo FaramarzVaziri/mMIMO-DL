@@ -56,12 +56,12 @@ class ML_model_class(tf.keras.Model):
     
     def train_step(self, inputs0):
         if (self.phase_noise_exists_while_training == False):
-            H_tilde_0_complex, H_tilde_0, _, _, _ = inputs0
+            H_tilde_0_complex, H_tilde_0, H_complex, Lambda_B, Lambda_U = inputs0
             with tf.GradientTape() as tape:
                 V_D, W_D, V_RF, W_RF = self.model_dnn(H_tilde_0)
                 inputs1 = [V_D, W_D, V_RF, W_RF]
                 V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
-                inputs2 = [V_D_new, W_D_cplx, H_tilde_0_complex, V_RF_cplx, W_RF_cplx]
+                inputs2 = [V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx]
                 d_loss = self.loss(inputs2)
             grads = tape.gradient(d_loss, self.model_dnn.trainable_weights)
             self.optimizer.apply_gradients(zip(grads, self.model_dnn.trainable_weights))
@@ -113,10 +113,8 @@ class ML_model_class(tf.keras.Model):
                                                    self.d, self.BATCHSIZE, self.phase_shift_stddiv,
                                                    self.truncation_ratio_keep, self.Nsymb, self.Ts, self.fc, self.c,
                                                    self.PHN_innovation_std, self.mat_fname, self.eval_dataset_size, 'test', 'yes')
-        C = 0
-        C_tmp = []
-        RX_tmp = []
-        RQ_tmp = []
+        C_mean = 0
+
         HH_complex = []
         HH_tilde_0_cplx = []
         LLambda_B = []
@@ -130,11 +128,16 @@ class ML_model_class(tf.keras.Model):
             inputs1 = [V_D, W_D, V_RF, W_RF]
             V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx = self.activation(inputs1)
             T = self.metric_capacity_in_presence_of_phase_noise([V_D_new, W_D_cplx, H_complex, V_RF_cplx, W_RF_cplx, Lambda_B, Lambda_U])
-            C = C + T[0]/N_of_batches_in_DS
-            C_tmp.append(T[1])
-            RX_tmp.append(T[2])
-            RQ_tmp.append(T[3])
+            C_mean = C_mean + T[0]/N_of_batches_in_DS
 
+            if (batch_number == 0):
+                c = T[1]
+                RX = T[2]
+                RQ = T[3]
+            else:
+                c = tf.concat([c, T[1]], axis=0)
+                RX = tf.concat([RX, T[2]], axis=0)
+                RQ = tf.concat([RQ, T[3]], axis=0)
 
         # Creating data for Sohrabis method in Matlab
 
@@ -157,10 +160,7 @@ class ML_model_class(tf.keras.Model):
         else:
             sio.savemat("/data/jabbarva/github_repo/mMIMO-DL/datasets/data_set_for_matlab.mat",mdic)
 
-        return tf.squeeze(C),\
-               tf.squeeze(tf.concat(C_tmp, axis = 0)),\
-               tf.math.real(tf.squeeze(tf.concat(RX_tmp, axis = 0))),\
-               tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
+        return C_mean, c, RX, RQ
 
     
     def evaluation_of_Sohrabis_beamformer(self):
@@ -176,40 +176,33 @@ class ML_model_class(tf.keras.Model):
                                                    self.truncation_ratio_keep, self.Nsymb, self.Ts, self.fc, self.c,
                                                    self.PHN_innovation_std, dataset_for_testing_sohrabi, self.eval_dataset_size,
                                                    'test', 'yes')
-        C = 0
-        C_tmp = []
-        RX_tmp = []
-        RQ_tmp = []
-        N_of_batches_in_DS = int(self.eval_dataset_size/self.BATCHSIZE)
+        C_mean = 0
+        N_of_batches_in_DS = int(self.eval_dataset_size / self.BATCHSIZE)
         for batch_number in range(N_of_batches_in_DS):
             # print('batch_number: ', batch_number)
-            H_complex, Lambda_B, Lambda_U, \
-            V_RF_Sohrabi_optimized, W_RF_Sohrabi_optimized, \
-            V_D_Sohrabi_optimized, W_D_Sohrabi_optimized = obj_dataset_2.data_generator_for_evaluation_of_Sohrabis_beamformer(batch_number)
-            # print('V_D_Sohrabi_optimized:   ', V_D_Sohrabi_optimized.shape)
-            # print('norm of V_D_new: ', tf.norm(tf.squeeze(V_D_new[0,:])))
-            # print('norm of W_D_cplx: ', tf.norm(tf.squeeze(W_D_cplx[0,:])))
-            # print('norm of V_RF_cplx: ', tf.norm(tf.squeeze(V_RF_cplx[0,:])))
-            # print('norm of W_RF_cplx: ', tf.norm(tf.squeeze(W_RF_cplx[0,:])))
-            #
-            # print('V_D_new: ', (tf.squeeze(V_D_new[0,:])))
-            # print('W_D_cplx: ', (tf.squeeze(W_D_cplx[0,:])))
-            # print('V_RF_cplx: ', (tf.squeeze(V_RF_cplx[0,:])))
-            # print('W_RF_cplx: ', (tf.squeeze(W_RF_cplx[0,:])))
+            H_complex, Lambda_B, Lambda_U, V_RF_Sohrabi_optimized, W_RF_Sohrabi_optimized, \
+            V_D_Sohrabi_optimized, W_D_Sohrabi_optimized = \
+                obj_dataset_2.data_generator_for_evaluation_of_Sohrabis_beamformer(batch_number)
+            # print('in ml model:', V_D_Sohrabi_optimized.shape, W_D_Sohrabi_optimized.shape,H_complex.shape,V_RF_Sohrabi_optimized.shape,W_RF_Sohrabi_optimized.shape,Lambda_B.shape,Lambda_U.shape)
+            T = self.metric_capacity_in_presence_of_phase_noise([V_D_Sohrabi_optimized,
+                                                                 W_D_Sohrabi_optimized,
+                                                                 H_complex,
+                                                                 V_RF_Sohrabi_optimized,
+                                                                 W_RF_Sohrabi_optimized,
+                                                                 Lambda_B,
+                                                                 Lambda_U])
+            C_mean = C_mean + T[0] / N_of_batches_in_DS
 
-            T = self.metric_capacity_in_presence_of_phase_noise([V_D_Sohrabi_optimized, W_D_Sohrabi_optimized,
-                                                                 H_complex,V_RF_Sohrabi_optimized,
-                                                                 W_RF_Sohrabi_optimized , Lambda_B, Lambda_U])
+            if (batch_number == 0):
+                c = T[1]
+                RX = T[2]
+                RQ = T[3]
+            else:
+                c = tf.concat([c, T[1]], axis=0)
+                RX = tf.concat([RX, T[2]], axis=0)
+                RQ = tf.concat([RQ, T[3]], axis=0)
 
-            C = C + T[0] / N_of_batches_in_DS
-            C_tmp.append(T[1])
-            RX_tmp.append(T[2])
-            RQ_tmp.append(T[3])
-
-        return tf.squeeze(C),\
-               tf.squeeze(tf.concat(C_tmp, axis = 0)),\
-               tf.math.real(tf.squeeze(tf.concat(RX_tmp, axis = 0))),\
-               tf.math.real(tf.squeeze(tf.concat(RQ_tmp, axis = 0)))
+        return C_mean, c, RX, RQ
 
     @property
     def metrics(self):

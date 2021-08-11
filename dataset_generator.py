@@ -75,8 +75,6 @@ class dataset_generator_class:
     def Wiener_phase_noise_generator_Ruoyu_for_one_frame_forall_RF(self, Nrf):
         if (self.mode == 'train' and self.phase_noise == 'no'):
             N_symbols = 1
-        elif(self.mode == 'train' and self.phase_noise == 'yes'):
-            N_symbols = self.Nsymb
         else:
             N_symbols = self.Nsymb
 
@@ -91,8 +89,8 @@ class dataset_generator_class:
             PHN_time = tf.math.cumsum(T0)
             PHN_time_reshaped = tf.reshape(PHN_time, shape=[N_symbols, self.K])
             exp_j_PHN_time_reshaped = tf.complex(tf.cos(PHN_time_reshaped),
-                                                 tf.sin(PHN_time_reshaped)) / self.K
-            DFT_of_exp_j_PHN_time_reshaped = tf.signal.fft(exp_j_PHN_time_reshaped)  # Computes the 1-dimensional discrete Fourier transform over the inner-most dimension of input
+                                                 tf.sin(PHN_time_reshaped))
+            DFT_of_exp_j_PHN_time_reshaped = tf.signal.fft(exp_j_PHN_time_reshaped)/ self.K  # Computes the 1-dimensional discrete Fourier transform over the inner-most dimension of input
             DFT_phn_tmp.append(DFT_of_exp_j_PHN_time_reshaped)
 
         output = tf.transpose(tf.stack(DFT_phn_tmp, axis=0), perm=[1, 2, 0])
@@ -234,18 +232,7 @@ class dataset_generator_class:
                                                                      self.N_u_a]))
         bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
         H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
-        H_tilde_0 = []
-        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
-        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
-        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
-        #
-        # if (self.phase_noise == 'yes'):
-        #     return H_complex, H_tilde_0, Lambda_B, Lambda_U
-        # else:
-        #     if (self.mode == 'train'):
-        #         return H_tilde_0_complex, H_tilde_0
-        #     else: # test and capacity evaluation
-        #         return H_tilde_0_complex, H_tilde_0, H_complex, H_tilde_0, Lambda_B, Lambda_U
+        H_tilde_0 = tf.stack([tf.math.real(H_tilde_0_complex), tf.math.imag(H_tilde_0_complex)], axis=4)
 
         return H_tilde_0_complex, H_tilde_0, H_complex, Lambda_B, Lambda_U
 
@@ -304,10 +291,8 @@ class dataset_generator_class:
 
         bundeled_inputs_0 = [H_complex, Lambda_B_0_forall_k_forall_samps, Lambda_U_0_forall_k_forall_samps]
         H_tilde_0_complex = self.h_tilde_0_calculation_forall_k_forall_samps(bundeled_inputs_0)
-        H_tilde_0 = []
-        H_tilde_0.append(tf.math.real(H_tilde_0_complex))
-        H_tilde_0.append(tf.math.imag(H_tilde_0_complex))
-        H_tilde_0 = tf.stack(H_tilde_0, axis=4)
+        H_tilde_0 = tf.stack([tf.math.real(H_tilde_0_complex), tf.math.imag(H_tilde_0_complex)], axis=4)
+
         return H_complex, H_tilde_0, Lambda_B, Lambda_U
 
     
@@ -332,5 +317,8 @@ class dataset_generator_class:
                                 batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
         W_D_Sohrabi_optimized = np.transpose(mat_contents['W_D_Sohrabi_optimized'], axes=[0, 3, 1, 2])[
                                 batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]
+        # print('in DS gen:', V_D_Sohrabi_optimized.shape, W_D_Sohrabi_optimized.shape, H_complex.shape,
+        #       V_RF_Sohrabi_optimized.shape, W_RF_Sohrabi_optimized.shape, Lambda_B.shape, Lambda_U.shape)
+
         return H_complex, Lambda_B, Lambda_U, V_RF_Sohrabi_optimized, W_RF_Sohrabi_optimized, \
                V_D_Sohrabi_optimized, W_D_Sohrabi_optimized
