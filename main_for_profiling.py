@@ -101,29 +101,15 @@ if __name__ == '__main__':
 
     obj_capacity_metric = sequential_loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
                                                              N_scatterers, angular_spread_rad, wavelength,
-                                                             d, BATCHSIZE, 1, Nsymb, 1, 1, 'eval')
+                                                             d, BATCHSIZE, 1, Nsymb, 1, 1, 'train')
 
     # The profiling starts from here /////////////////////////////////////////////////////////////////////////////////////
 
-    # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-    # profiling Rx_calculation_forall_k --------------------------------------------------------------
+    # profiling capacity_forall_samples --------------------------------------------------------------
     LP_capacity_forall_samples = LineProfiler()
     LP_WRAPPER_capacity_forall_samples = LP_capacity_forall_samples(obj_capacity_metric.capacity_forall_samples)
     # preparing inputs
-    # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U
     V_D = tf.complex(tf.random.normal(shape=[BATCHSIZE ,K, N_b_rf, N_s], dtype=tf.float32),
                        tf.random.normal(shape=[BATCHSIZE, K, N_b_rf, N_s], dtype=tf.float32))
     W_D = tf.complex(tf.random.normal(shape=[BATCHSIZE, K, N_u_rf, N_s], dtype=tf.float32),
@@ -147,31 +133,152 @@ if __name__ == '__main__':
     LP_WRAPPER_capacity_forall_samples(inputs)
     LP_capacity_forall_samples.print_stats(output_unit=1e-6)
 
-    #
-    #
-    # # profiling non_zero_element_finder_for_H_hat --------------------------------------------------------------
-    # LP_non_zero_element_finder_for_H_hat = LineProfiler()
-    # LP_WRAPPER_non_zero_element_finder_for_H_hat = LP_non_zero_element_finder_for_H_hat(obj_sequential_loss_phase_noised.non_zero_element_finder_for_H_hat)
-    # # dummy run
-    # obj_sequential_loss_phase_noised.non_zero_element_finder_for_H_hat(k =1, m =0, truncation_ratio_keep=1)
-    # # profiler run
-    # LP_WRAPPER_non_zero_element_finder_for_H_hat(k =1, m =0, truncation_ratio_keep=1)
-    # LP_non_zero_element_finder_for_H_hat.print_stats(output_unit=1e-6)
-    #
-    # # profiling H_hat_m_k_calculation --------------------------------------------------------------
-    # LP_H_hat_m_k_calculation = LineProfiler()
-    # LP_WRAPPER_H_hat_m_k_calculation = LP_H_hat_m_k_calculation(obj_sequential_loss_phase_noised.H_hat_m_k_calculation)
-    # # dummy run
-    # obj_sequential_loss_phase_noised.H_hat_m_k_calculation([H_tilde_0_complex[0,0,:], Lambda_B[0,0,:], Lambda_U[0,0,:]])
-    # # profiler run
-    # LP_WRAPPER_H_hat_m_k_calculation([H_tilde_0_complex[0,0,:], Lambda_B[0,0,:], Lambda_U[0,0,:]])
-    # LP_H_hat_m_k_calculation.print_stats(output_unit=1e-6)
 
+
+
+    # profiling capacity_forall_symbols --------------------------------------------------------------
+    LP_capacity_forall_symbols = LineProfiler()
+    LP_WRAPPER_capacity_forall_symbols = LP_capacity_forall_symbols(obj_capacity_metric.capacity_forall_symbols)
+    # preparing inputs
+    # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U
+    V_D = tf.complex(tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32))
+    W_D = tf.complex(tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32))
+    V_RF = tf.complex(tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32))
+    W_RF = tf.complex(tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32))
+    H = tf.complex(tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32),
+                   tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32))
+    Lambda_B = tf.complex(tf.random.normal(shape=[Nsymb, K, N_b_a, N_b_a], dtype=tf.float32),
+                          tf.random.normal(shape=[Nsymb, K, N_b_a, N_b_a], dtype=tf.float32))
+    Lambda_U = tf.complex(tf.random.normal(shape=[Nsymb, K, N_u_a, N_u_a], dtype=tf.float32),
+                          tf.random.normal(shape=[Nsymb, K, N_u_a, N_u_a], dtype=tf.float32))
+
+    inputs = [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U]
+    # dummy run
+    obj_capacity_metric.capacity_forall_symbols(inputs)
+    # profiler run
+    LP_WRAPPER_capacity_forall_symbols(inputs)
+    LP_capacity_forall_symbols.print_stats(output_unit=1e-6)
+
+
+
+
+    # profiling capacity_forall_k --------------------------------------------------------------
+    LP_capacity_forall_k = LineProfiler()
+    LP_WRAPPER_capacity_forall_k = LP_capacity_forall_k(obj_capacity_metric.capacity_forall_k)
+    # preparing inputs
+    # V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U
+    V_D = tf.complex(tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32))
+    W_D = tf.complex(tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32))
+    V_RF = tf.complex(tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32))
+    W_RF = tf.complex(tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32))
+    H = tf.complex(tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32),
+                   tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32))
+    Lambda_B = tf.complex(tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32))
+    Lambda_U = tf.complex(tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32))
+
+    inputs = [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U]
+    # dummy run
+    obj_capacity_metric.capacity_forall_k(inputs)
+    # profiler run
+    LP_WRAPPER_capacity_forall_k(inputs)
+    LP_capacity_forall_k.print_stats(output_unit=1e-6)
+
+
+
+    # profiling capacity_and_RX_RQ_per_k --------------------------------------------------------------
+    LP_capacity_and_RX_RQ_per_k = LineProfiler()
+    LP_WRAPPER_capacity_and_RX_RQ_per_k = LP_capacity_and_RX_RQ_per_k(obj_capacity_metric.capacity_and_RX_RQ_per_k)
+    # preparing inputs
+    V_D = tf.complex(tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32))
+    W_D = tf.complex(tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32))
+    V_RF = tf.complex(tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32))
+    W_RF = tf.complex(tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32))
+    H = tf.complex(tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32),
+                   tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32))
+    Lambda_B = tf.complex(tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32))
+    Lambda_U = tf.complex(tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32))
+
+    inputs = [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, 0]
+    # dummy run
+    obj_capacity_metric.capacity_and_RX_RQ_per_k(inputs)
+    # profiler run
+    LP_WRAPPER_capacity_and_RX_RQ_per_k(inputs)
+    LP_capacity_and_RX_RQ_per_k.print_stats(output_unit=1e-6)
+
+    # profiling Rq_per_k --------------------------------------------------------------
+    LP_Rq_per_k = LineProfiler()
+    LP_WRAPPER_Rq_per_k = LP_Rq_per_k(obj_capacity_metric.Rq_per_k)
+    # preparing inputs
+    V_D = tf.complex(tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_b_rf, N_s], dtype=tf.float32))
+    W_D = tf.complex(tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[K, N_u_rf, N_s], dtype=tf.float32))
+    V_RF = tf.complex(tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32))
+    W_RF = tf.complex(tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32))
+    H = tf.complex(tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32),
+                   tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32))
+    Lambda_B = tf.complex(tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32))
+    Lambda_U = tf.complex(tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32))
+
+    inputs = [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U, 0]
+    # dummy run
+    obj_capacity_metric.Rq_per_k(inputs)
+    # profiler run
+    LP_WRAPPER_Rq_per_k(inputs)
+    LP_Rq_per_k.print_stats(output_unit=1e-6)
+
+
+
+    # profiling R_I_Q_m_k --------------------------------------------------------------
+    LP_R_I_Q_m_k = LineProfiler()
+    LP_WRAPPER_R_I_Q_m_k = LP_R_I_Q_m_k(obj_capacity_metric.R_I_Q_m_k)
+    # preparing inputs
+    V_D_m = tf.complex(tf.random.normal(shape=[N_b_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[N_b_rf, N_s], dtype=tf.float32))
+    W_D_k = tf.complex(tf.random.normal(shape=[N_u_rf, N_s], dtype=tf.float32),
+                     tf.random.normal(shape=[N_u_rf, N_s], dtype=tf.float32))
+    V_RF = tf.complex(tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_b_a, N_b_rf], dtype=tf.float32))
+    W_RF = tf.complex(tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32),
+                      tf.random.normal(shape=[N_u_a, N_u_rf], dtype=tf.float32))
+    H = tf.complex(tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32),
+                   tf.random.normal(shape=[K, N_u_a, N_b_a], dtype=tf.float32))
+    Lambda_B = tf.complex(tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32))
+    Lambda_U = tf.complex(tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_u_a, N_u_a], dtype=tf.float32))
+
+    inputs = [V_D_m, W_D_k, H, V_RF, W_RF, Lambda_B, Lambda_U, 0, 1]
+    # dummy run
+    obj_capacity_metric.R_I_Q_m_k(inputs)
+    # profiler run
+    LP_WRAPPER_R_I_Q_m_k(inputs)
+    LP_R_I_Q_m_k.print_stats(output_unit=1e-6)
 
 
     # # profiling --------------------------------------------------------------
     # LP_ = LineProfiler()
-    # LP_WRAPPER_ = LP_(obj_sequential_loss_phase_noised.)
+    # LP_WRAPPER_ = LP_(obj_capacity_metric.)
     # dummy run
     # profiler run
     # LP_WRAPPER_()
