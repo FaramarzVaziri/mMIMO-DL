@@ -38,11 +38,11 @@ if __name__ == '__main__':
     print("-- Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240
-    test_dataset_size = 128
-    eval_dataset_size = 128
+    train_dataset_size = 8
+    test_dataset_size = 8
+    eval_dataset_size = 8
     width_of_network = 5
-    BATCHSIZE = 128
+    BATCHSIZE = 4
     L_rate =  1e-3
     dropout_rate = 0.5
     precision_fixer = 1e-6
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     # profiler run
     LP_WRAPPER_capacity_forall_samples(inputs)
     LP_capacity_forall_samples.print_stats(output_unit=1e-6)
-    
+
     #
     #
     # # profiling non_zero_element_finder_for_H_hat --------------------------------------------------------------
