@@ -276,6 +276,23 @@ if __name__ == '__main__':
     LP_R_I_Q_m_k.print_stats(output_unit=1e-6)
 
 
+
+    # profiling cyclical_shift --------------------------------------------------------------
+    LP_cyclical_shift = LineProfiler()
+    LP_WRAPPER_cyclical_shift = LP_cyclical_shift(obj_capacity_metric.cyclical_shift)
+    # preparing inputs
+    Lambda_B = tf.complex(tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32),
+                          tf.random.normal(shape=[K, N_b_a, N_b_a], dtype=tf.float32))
+
+    inputs = [Lambda_B, 1, True]
+    # dummy run
+    obj_capacity_metric.cyclical_shift(Lambda_B, 1, True)
+    # profiler run
+    LP_WRAPPER_cyclical_shift(Lambda_B, 1, True)
+    LP_cyclical_shift.print_stats(output_unit=1e-6)
+
+
+
     # # profiling --------------------------------------------------------------
     # LP_ = LineProfiler()
     # LP_WRAPPER_ = LP_(obj_capacity_metric.)
