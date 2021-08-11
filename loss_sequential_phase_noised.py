@@ -191,9 +191,9 @@ class sequential_loss_phase_noised_class:
     def capacity_forall_symbols(self, bundeled_inputs_0):
         if (self.mode == 'train' or self.mode == 'test'):
             V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0 # [Nsymb, k, ...]
-            selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
+            # selected_symbols = np.random.choice(self.Nsymb, int(self.sampling_ratio_time_domain_keep * self.Nsymb), replace=False)
             c = 0.
-            for ns in selected_symbols:
+            for ns in tf.range(0, self.Nsymb, 10):
                 T = self.capacity_forall_k([V_D, W_D, H, V_RF, W_RF, Lambda_B[ns,:], Lambda_U[ns,:]])
                 c = c + T / int(self.sampling_ratio_time_domain_keep * self.Nsymb)
             return c

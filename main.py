@@ -37,11 +37,11 @@ if __name__ == '__main__':
     print("-- Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     # INPUTS ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 1024
-    test_dataset_size = 32
-    eval_dataset_size = 32
-    width_of_network = 1
-    BATCHSIZE = 32
+    train_dataset_size = 10240
+    test_dataset_size = 128
+    eval_dataset_size = 128
+    width_of_network = 5
+    BATCHSIZE = 128
     L_rate =  1e-3
     dropout_rate = 0.5
     precision_fixer = 1e-6
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 4 / K
-    sampling_ratio_time_domain_keep = 5 / Nsymb
+    sampling_ratio_time_domain_keep = 4 / Nsymb
     sampling_ratio_subcarrier_domain_keep = 4 / K
 
     print('-- Parameter initialization is done.')
@@ -158,7 +158,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
     obj_ML_model_pre_training.fit(the_dataset_train,
-                                  epochs=10, callbacks=[reduce_lr])#, validation_data=the_dataset_test, validation_freq=1, verbose=1) #
+                                  epochs=3, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
 
     end_time_1 = time.time()
     print("-- pre-training is done. (elapsed time = ", (end_time_1 - start_time), ' s)')
@@ -248,7 +248,7 @@ if __name__ == '__main__':
                                                on_what_device, True)
     print('-- Transfer weights and biases is done')
 
-    optimizer_2 = tf.keras.optimizers.Adam(learning_rate=L_rate / 2, clipnorm=1.)
+    optimizer_2 = tf.keras.optimizers.Adam(learning_rate = L_rate / 2, clipnorm=1.)
 
 
     obj_ML_model_post_training.compile(
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     print('-- Training in presence of phase noise has started.')
     start_time = time.time()
     obj_ML_model_post_training.fit(the_dataset_train_phn,
-                                  epochs=2, callbacks=[reduce_lr], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
+                                  epochs=2, callbacks=[reduce_lrTF], validation_data=the_dataset_test, validation_freq=1, verbose=1) #
 
     end_time_1 = time.time()
     print("-- elapsed time of post-training = ", (end_time_1 - start_time), ' seconds')
