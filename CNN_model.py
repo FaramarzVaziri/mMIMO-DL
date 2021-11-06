@@ -1,18 +1,550 @@
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Dense, Conv3D, Reshape, MaxPooling3D, BatchNormalization, Input, Flatten, Dropout
+from tensorflow.keras.layers import Dense, Conv3D, Reshape, MaxPooling3D, BatchNormalization, Input, Flatten, Dropout, \
+    Activation, Add, Conv3DTranspose, Multiply, Lambda
+global ofdm_symbol_id
 import numpy as np
 
-class CNN_model_class:
-    def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
+
+# https://research.fb.com/wp-content/uploads/2017/01/paper_expl_norm_on_deep_res_networks.pdf
+class IdentityBlock_v2_class(tf.keras.Model):  #
+    def __init__(self, filters, kernel_size, strides, dilation, trainablity):
+        super(IdentityBlock_v2_class, self).__init__(name='')
+        self.bn0 = BatchNormalization()
+        self.conv1 = Conv3D(filters=filters,
+                            kernel_size=kernel_size,
+                            activation=None,
+                            strides=strides,
+                            padding='same',
+                            dilation_rate=dilation,
+                            trainable=trainablity)
+        self.bn1 = BatchNormalization(trainable=trainablity)
+
+        self.conv2 = Conv3D(filters=filters,
+                            kernel_size=kernel_size,
+                            activation=None,
+                            strides=strides,
+                            padding='same',
+                            dilation_rate=dilation,
+                            trainable=trainablity)
+        self.bn2 = BatchNormalization(trainable=trainablity)
+
+        self.act = Activation('relu')
+
+        # residual connection
+        self.res_con = Conv3D(filters=filters,
+                              kernel_size=(1, 1, 1),
+                              strides=(1, 1, 1),
+                              activation=None,
+                              padding='same',
+                              dilation_rate=dilation,
+                              trainable=trainablity)
+        self.add = Add()
+
+    def call(self, input_tensor):
+        y = self.conv1(input_tensor)
+        y = self.bn1(y)
+        y = self.act(y)
+        y = self.conv2(y)
+        y = self.bn2(y)
+        y = self.act(y)  # todo: it is the wrong resnet
+        z = self.add([y, self.res_con(input_tensor)])
+        # z = self.act(z)
+        return z
+
+class Generic_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
+    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation, trainablity):
+        super(Generic_2_ns_4_small_MIMOFDM_CNN_class, self).__init__(name='')
+
+        # common path
+        self.ID_block_common_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_common_branch_layer_2 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_common_branch_layer_3 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+        self.ID_block_common_branch_layer_4 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_common_branch_layer_5 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_common_branch_layer_6 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_common_branch_layer_7 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+
+        # V_D path
+        self.ID_block_V_D_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_2 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_3 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_4 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_5 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_6 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+
+        # V_RF path
+        self.ID_block_V_RF_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_2 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_3 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_4 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_5 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_6 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+    def call(self, csi):
+        x = self.ID_block_common_branch_layer_1(csi)
+        x = self.ID_block_common_branch_layer_2(x)
+        x = self.ID_block_common_branch_layer_3(x)
+        x = self.ID_block_common_branch_layer_4(x)
+        # x = self.ID_block_common_branch_layer_5(x)
+        # x = self.ID_block_common_branch_layer_6(x)
+        # x = self.ID_block_common_branch_layer_7(x)
+
+        # V_D path
+        vd = self.ID_block_V_D_branch_layer_1(x)
+        vd = self.ID_block_V_D_branch_layer_2(vd)
+        vd = self.ID_block_V_D_branch_layer_3(vd)
+        vd = self.ID_block_V_D_branch_layer_4(vd)
+        vd = self.ID_block_V_D_branch_layer_5(vd)
+        vd = self.ID_block_V_D_branch_layer_6(vd)
+        vd_end = vd
+
+        # V_RF path
+        vrf = self.ID_block_V_RF_branch_layer_1(x)
+        vrf = self.ID_block_V_RF_branch_layer_2(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_3(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_4(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_5(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_6(vrf)
+        vrf_end = vrf
+
+        return vd_end, vrf_end
+
+
+
+class Generic_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
+    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation, trainablity, subcarrier_strides, N_u_a_strides, N_b_a_strides):
+        super(Generic_2_ns_4_large_MIMOFDM_CNN_class, self).__init__(name='')
+
+        # common path
+
+        self.ID_block_common_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.MP_1 = MaxPooling3D(pool_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides))
+        self.MP_2 = MaxPooling3D(pool_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides))
+        self.ID_block_common_branch_layer_2 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.MP_3 = MaxPooling3D(pool_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides))
+        self.ID_block_common_branch_layer_3 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.MP_4 = MaxPooling3D(pool_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides))
+        self.ID_block_common_branch_layer_4 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                                kernel_size=kernels,
+                                                                strides=convolutional_strides,
+                                                                dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+
+        # V_D path
+        self.ID_block_V_D_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_2 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_3 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_4 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_5 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_6 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+
+        # V_RF path
+        self.ID_block_V_RF_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_2 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_3 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_4 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_5 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_6 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+
+    def call(self, csi):
+
+        x = self.ID_block_common_branch_layer_1(csi)
+        x = self.MP_1(x)
+        x = self.MP_2(x)
+        x = self.ID_block_common_branch_layer_2(x)
+        x = self.MP_3(x)
+        x = self.ID_block_common_branch_layer_3(x)
+        x = self.MP_4(x)
+        x = self.ID_block_common_branch_layer_4(x)
+        # x = self.ID_block_common_branch_layer_5(x)
+        # x = self.ID_block_common_branch_layer_6(x)
+        # x = self.ID_block_common_branch_layer_7(x)
+
+        # V_D path
+        vd = self.ID_block_V_D_branch_layer_1(x)
+        vd = self.ID_block_V_D_branch_layer_2(vd)
+        vd = self.ID_block_V_D_branch_layer_3(vd)
+        vd = self.ID_block_V_D_branch_layer_4(vd)
+        vd = self.ID_block_V_D_branch_layer_5(vd)
+        vd = self.ID_block_V_D_branch_layer_6(vd)
+        vd_end = vd
+
+        # V_RF path
+        vrf = self.ID_block_V_RF_branch_layer_1(x)
+        vrf = self.ID_block_V_RF_branch_layer_2(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_3(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_4(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_5(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_6(vrf)
+        vrf_end = vrf
+
+        return vd_end, vrf_end
+
+class Specialized_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
+    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation,
+                 N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, trainablity):
+        super(Specialized_2_ns_4_small_MIMOFDM_CNN_class, self).__init__(name='')
+
+        # V_D path
+        self.ID_block_V_D_branch_layer_7 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_8 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_9 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_10 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_11 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_12 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_D_branch_layer_13 = IdentityBlock_v2_class(filters=2,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.MP_V_D_branch_end = MaxPooling3D(pool_size=(1, int(N_u_a / N_b_rf), int(N_b_a / N_s)))
+        self.reshaper_V_D = Reshape(target_shape=[K, N_b_rf, N_s, 2])
+
+        # V_RF path
+        self.ID_block_V_RF_branch_layer_7 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_8 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_9 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_10 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_11 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_12 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.ID_block_V_RF_branch_layer_13 = IdentityBlock_v2_class(filters=1,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.MP_V_RF_branch_end = MaxPooling3D(pool_size=(K, int(N_u_a / N_b_a), N_b_a))
+
+    def call(self, vd, vrf):
+        # V_D path
+
+        vd = self.ID_block_V_D_branch_layer_7(vd)
+        vd = self.ID_block_V_D_branch_layer_8(vd)
+        vd = self.ID_block_V_D_branch_layer_9(vd)
+        vd = self.ID_block_V_D_branch_layer_10(vd)
+        vd = self.ID_block_V_D_branch_layer_11(vd)
+        vd = self.ID_block_V_D_branch_layer_12(vd)
+        vd = self.ID_block_V_D_branch_layer_13(vd)
+
+        vd = self.MP_V_D_branch_end(vd)
+        vd_end = self.reshaper_V_D(vd)
+
+        # V_RF path
+
+        vrf = self.ID_block_V_RF_branch_layer_7(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_8(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_9(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_10(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_11(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_12(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_13(vrf)
+        vrf_end = self.MP_V_RF_branch_end(vrf)
+
+        return vd_end, vrf_end
+
+class Specialized_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
+    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation,
+                 N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, trainablity,
+                 subcarrier_strides, N_u_a_strides, N_b_a_strides):
+        super(Specialized_2_ns_4_large_MIMOFDM_CNN_class, self).__init__(name='')
+
+        # V_D path
+        self.Tconv_V_D_1 = Conv3DTranspose(filters=convolutional_filters,
+                                           kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           padding='same')
+        self.ID_block_V_D_branch_layer_7 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.Tconv_V_D_2 = Conv3DTranspose(filters=convolutional_filters,
+                                           kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           padding='same')
+        self.ID_block_V_D_branch_layer_8 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.Tconv_V_D_3 = Conv3DTranspose(filters=convolutional_filters,
+                                           kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           padding='same')
+        self.ID_block_V_D_branch_layer_9 = IdentityBlock_v2_class(filters=2,
+                                                             kernel_size=kernels,
+                                                             strides=convolutional_strides,
+                                                             dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.Tconv_V_D_4 = Conv3DTranspose(filters=2,
+                                           kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                           padding='same')
+
+        self.MP_V_D_branch_end = MaxPooling3D(pool_size=(1, int(N_u_a / N_b_rf), int(N_b_a / N_s)))
+        self.reshaper_V_D = Reshape(target_shape=[K, N_b_rf, N_s, 2])
+
+
+        # V_RF path
+        self.Tconv_V_RF_1 = Conv3DTranspose(filters=convolutional_filters,
+                                            kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            padding='same')
+        self.ID_block_V_RF_branch_layer_7 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.Tconv_V_RF_2 = Conv3DTranspose(filters=convolutional_filters,
+                                            kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            padding='same')
+        self.ID_block_V_RF_branch_layer_8 = IdentityBlock_v2_class(filters=convolutional_filters,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.Tconv_V_RF_3 = Conv3DTranspose(filters=convolutional_filters,
+                                            kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            padding='same')
+        self.ID_block_V_RF_branch_layer_9 = IdentityBlock_v2_class(filters=1,
+                                                              kernel_size=kernels,
+                                                              strides=convolutional_strides,
+                                                              dilation=convolutional_dilation,
+                                                                trainablity=trainablity)
+        self.Tconv_V_RF_4 = Conv3DTranspose(filters=1,
+                                            kernel_size=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            strides=(subcarrier_strides, N_u_a_strides, N_b_a_strides),
+                                            padding='same')
+        self.MP_V_RF_branch_end = MaxPooling3D(pool_size=(K, int(N_u_a / N_b_a), N_b_a))
+
+    def call(self, vd, vrf):
+        # V_D path
+        vd = self.Tconv_V_D_1(vd)
+        vd = self.ID_block_V_D_branch_layer_7(vd)
+        vd = self.Tconv_V_D_2(vd)
+        vd = self.ID_block_V_D_branch_layer_8(vd)
+        vd = self.Tconv_V_D_3(vd)
+        vd = self.ID_block_V_D_branch_layer_9(vd)
+        vd = self.Tconv_V_D_4(vd)
+        vd = self.MP_V_D_branch_end(vd)
+        vd_end = self.reshaper_V_D(vd)
+
+        # V_RF path
+        vrf = self.Tconv_V_RF_1(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_7(vrf)
+        vrf = self.Tconv_V_RF_2(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_8(vrf)
+        vrf = self.Tconv_V_RF_3(vrf)
+        vrf = self.ID_block_V_RF_branch_layer_9(vrf)
+        vrf = self.Tconv_V_RF_4(vrf)
+        vrf_end = self.MP_V_RF_branch_end(vrf)
+
+        return vd_end, vrf_end
+
+class ResNet_model_class():
+    def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, SNR, P, N_c, N_scatterers,
+                 angular_spread_rad, wavelength,
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, mat_fname,
-                 dataset_size, width_parameter, dropout_rate):
+                 dataset_size, dropout_rate, convolutional_kernels, convolutional_filters,
+                 convolutional_strides, convolutional_dilation, subcarrier_strides, N_b_a_strides, N_u_a_strides, generic_part_trainable, specialized_part_trainable):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
         self.N_u_rf = N_u_rf
         self.N_s = N_s
         self.K = K
+        self.PTRS_seperation = PTRS_seperation
         self.SNR = SNR
         self.P = P
         self.sigma2 = self.P / (10 ** (self.SNR / 10.))
@@ -30,492 +562,222 @@ class CNN_model_class:
         self.c = c
         self.mat_fname = mat_fname
         self.dataset_size = dataset_size
-        self.width_parameter = width_parameter
         self.dropout_rate = dropout_rate
+        self.convolutional_kernels = convolutional_kernels
+        self.convolutional_filters = convolutional_filters
+        self.convolutional_strides = convolutional_strides
+        self.convolutional_dilation = convolutional_dilation
+        self.subcarrier_strides = subcarrier_strides
+        self.N_b_a_strides = N_b_a_strides
+        self.N_u_a_strides = N_u_a_strides
+        self.generic_part_trainable = generic_part_trainable
+        self.specialized_part_trainable = specialized_part_trainable
 
-    def custom_CNN_plus_FC_with_functional_API(self):
+    def resnet_4_small_MIMOFDM_transmitter(self):
+        kernels = [min(self.K, self.convolutional_kernels),
+                   min(self.N_u_a, self.convolutional_kernels),
+                   min(self.N_b_a, self.convolutional_kernels)]
         csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
 
-        # CONV layers
-        C1 = Conv3D(filters=int(8 * self.width_parameter + 1), kernel_size=(1, 1, 1), strides=(1, 1, 1),
-                    padding='same',
-                    activation='relu')
-        MP1 = MaxPooling3D(pool_size=(4, 1, 1), padding='same')
-        BN1 = BatchNormalization()
-        C2 = Conv3D(filters=int(16 * self.width_parameter + 1), kernel_size=(1, 1, 1), strides=(1, 1, 1),
-                    padding='same',
-                    activation='relu')
-        MP2 = MaxPooling3D(pool_size=(4, 1, 1), padding='same')
-        BN2 = BatchNormalization()
+        generic_part_obj = Generic_2_ns_4_small_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                  kernels=kernels,
+                                                                  convolutional_strides=self.convolutional_strides,
+                                                                  convolutional_dilation=self.convolutional_dilation,
+                                                                  trainablity=self.generic_part_trainable)
+        specialized_part_obj = Specialized_2_ns_4_small_MIMOFDM_CNN_class(
+            convolutional_filters=self.convolutional_filters,
+            kernels=kernels,
+            convolutional_strides=self.convolutional_strides,
+            convolutional_dilation=self.convolutional_dilation,
+            N_b_a=self.N_b_a,
+            N_b_rf=self.N_b_rf,
+            N_u_a=self.N_u_a,
+            N_u_rf=self.N_u_rf,
+            N_s=self.N_s,
+            K=self.K,
+            PTRS_seperation=self.PTRS_seperation,
+            trainablity=self.specialized_part_trainable)
 
-        # FC layers
-        Layer_flatten = Flatten()
-        # FC1 = Dense(int(self.K * self.N_u_a * self.N_b_a * 2 * self.width_parameter + 1), activation='relu')
-        # FC2 = Dense(int(self.K * self.N_u_a * self.N_b_a * 2 * self.width_parameter + 1), activation='relu')
+        # Models
+        vd_generic, vrf_generic = generic_part_obj(csi)
+        vd, vrf = specialized_part_obj(vd_generic, vrf_generic)
+        func_model = Model(inputs=[csi], outputs=[vd, vrf])
 
-        # specifics
-        Layer_BN8 = BatchNormalization()
-        Layer_BN9 = BatchNormalization()
-        Layer_BN10 = BatchNormalization()
-        Layer_BN11 = BatchNormalization()
-        Layer_BN12 = BatchNormalization()
-        Layer_BN13 = BatchNormalization()
-        Layer_BN14 = BatchNormalization()
-        Layer_BN15 = BatchNormalization()
-        Layer_BN16 = BatchNormalization()
-        Layer_BN17 = BatchNormalization()
-        Layer_BN18 = BatchNormalization()
-        Layer_BN19 = BatchNormalization()
-        Layer_BN20 = BatchNormalization()
-        Layer_BN21 = BatchNormalization()
-        Layer_BN22 = BatchNormalization()
-        Layer_BN23 = BatchNormalization()
-        Layer_BN24 = BatchNormalization()
-        Layer_BN25 = BatchNormalization()
-        Layer_BN26 = BatchNormalization()
-        Layer_BN27 = BatchNormalization()
-        Layer_BN28 = BatchNormalization()
-        Layer_BN29 = BatchNormalization()
-        Layer_BN30 = BatchNormalization()
-        Layer_BN31 = BatchNormalization()
-
-        Layer_drop1 = Dropout(self.dropout_rate)
-        Layer_drop2 = Dropout(self.dropout_rate)
-        Layer_drop3 = Dropout(self.dropout_rate)
-        Layer_drop4 = Dropout(self.dropout_rate)
-        Layer_drop5 = Dropout(self.dropout_rate)
-        Layer_drop6 = Dropout(self.dropout_rate)
-        Layer_drop7 = Dropout(self.dropout_rate)
-        Layer_drop8 = Dropout(self.dropout_rate)
-        Layer_drop9 = Dropout(self.dropout_rate)
-        Layer_drop10 = Dropout(self.dropout_rate)
-        Layer_drop11 = Dropout(self.dropout_rate)
-        Layer_drop12 = Dropout(self.dropout_rate)
-
-        Layer_V_D_1 = Dense(int(self.K * self.N_b_a * 2 * self.width_parameter + 1), # size A
-                            activation='relu')
-        Layer_V_D_2 = Dense(int(self.K * self.N_b_a * 2 * self.width_parameter + 1), # size A
-                            activation='relu')
-        Layer_V_D_3 = Dense(int(self.K * self.N_b_a * 2 * self.width_parameter + 1), # size A
-                            activation='relu')
-        Layer_V_D_4 = Dense(int(self.K * self.N_b_rf * self.N_s * 2 * self.width_parameter + 1), # size B
-                            activation='relu')
-        Layer_V_D_5 = Dense(int(self.K * self.N_b_rf * self.N_s * 2 * self.width_parameter + 1), # size B
-                            activation='relu')
-        Layer_V_D_6 = Dense(int(self.K * self.N_b_rf * self.N_s * 2 * self.width_parameter + 1), # size B
-                            activation='relu')
-        Layer_V_D_7 = Dense(self.K * self.N_b_rf * self.N_s * 2)
-        reshaper_V_D = Reshape(target_shape=[self.K, self.N_b_rf, self.N_s, 2])
-
-
-        Layer_W_D_1 = Dense(int(self.K * self.N_u_a * 2 * self.width_parameter + 1), # size A
-                            activation='relu')
-        Layer_W_D_2 = Dense(int(self.K * self.N_u_a * 2 * self.width_parameter + 1), # size A
-                            activation='relu')
-        Layer_W_D_3 = Dense(int(self.K * self.N_u_a * 2 * self.width_parameter + 1),  # size A
-                            activation='relu')
-        Layer_W_D_4 = Dense(int(self.K * self.N_u_rf * self.N_s * 2*  self.width_parameter + 1), # size B
-                            activation='relu')
-        Layer_W_D_5 = Dense(int(self.K * self.N_u_rf * self.N_s * 2*  self.width_parameter + 1), # size B
-                            activation='relu')
-        Layer_W_D_6 = Dense(int(self.K * self.N_u_rf * self.N_s * 2*  self.width_parameter + 1), # size B
-                            activation='relu')
-        Layer_W_D_7 = Dense(self.K * self.N_u_rf * self.N_s * 2, activation='relu')
-        reshaper_W_D = Reshape(target_shape=[self.K, self.N_u_rf, self.N_s, 2])
-
-
-        Layer_V_RF_1 = Dense(int(self.K * self.N_b_a * 2 ), # size A
-                             activation='relu')
-        Layer_V_RF_2 = Dense(int(self.K * self.N_b_a * 2 ), # size A
-                             activation='relu')
-        Layer_V_RF_3 = Dense(int(self.K * self.N_b_a * 2 ), # size A
-                             activation='relu')
-        Layer_V_RF_4 = Dense(int(self.N_b_a * 2 ), # size B
-                             activation='relu')
-        Layer_V_RF_5 = Dense(int(self.N_b_a ), # size C
-                             activation='relu')
-        Layer_V_RF_6 = Dense(int(self.N_b_a ), # size C
-                             activation='relu')
-        Layer_V_RF_7 = Dense(self.N_b_a, activation='relu')
-        # reshaper_V_RF = Reshape(target_shape=[self.N_b_a])
-
-        Layer_W_RF_1 = Dense(int(self.K * self.N_u_a * 2 ), # size A
-                             activation='relu')
-        Layer_W_RF_2 = Dense(int(self.K * self.N_u_a * 2 ), # size A
-                             activation='relu')
-        Layer_W_RF_3 = Dense(int(self.K * self.N_u_a * 2  ), # size A
-                             activation='relu')
-        Layer_W_RF_4 = Dense(int(self.N_u_a * 2 ), # size B
-                             activation='relu')
-        Layer_W_RF_5 = Dense(int(self.N_u_a), # size C
-                             activation='relu')
-        Layer_W_RF_6 = Dense(int(self.N_u_a), # size C
-                             activation='relu')
-        Layer_W_RF_7 = Dense(self.N_u_a, activation='relu')
-        # reshaper_W_RF = Reshape(target_shape=[self.N_u_a])
-
-        # Connections
-        x = C1(csi)
-        x = MP1(x)
-        x = BN1(x)
-        x = C2(x)
-        x = MP2(x)
-        x = BN2(x)
-        x = Layer_flatten(x)
-        # x = FC1(x)
-        # x = FC2(x)
-
-        vd = Layer_V_D_1(x)
-        vd = Layer_BN8(vd)
-        vd = Layer_V_D_2(vd)
-        vd = Layer_BN9(vd)
-        vd = Layer_drop1(vd)
-        vd = Layer_V_D_3(vd)
-        vd = Layer_BN10(vd)
-        vd = Layer_V_D_4(vd)
-        vd = Layer_BN11(vd)
-        vd = Layer_V_D_5(vd)
-        vd = Layer_BN12(vd)
-        vd = Layer_drop2(vd)
-        vd = Layer_V_D_6(vd)
-        vd = Layer_BN13(vd)
-        vd = Layer_V_D_7(vd)
-        vd = reshaper_V_D(vd)
-
-        wd = Layer_W_D_1(x)
-        wd = Layer_BN14(wd)
-        wd = Layer_W_D_2(wd)
-        wd = Layer_BN15(wd)
-        wd = Layer_drop3(wd)
-        wd = Layer_W_D_3(wd)
-        wd = Layer_BN16(wd)
-        wd = Layer_W_D_4(wd)
-        wd = Layer_BN17(wd)
-        wd = Layer_W_D_5(wd)
-        wd = Layer_BN18(wd)
-        wd = Layer_drop4(wd)
-        wd = Layer_W_D_6(wd)
-        wd = Layer_BN19(wd)
-        wd = Layer_W_D_7(wd)
-        wd = reshaper_W_D(wd)
-
-        vrf = Layer_V_RF_1(x)
-        vrf = Layer_BN20(vrf)
-        vrf = Layer_V_RF_2(vrf)
-        vrf = Layer_BN21(vrf)
-        vrf = Layer_drop5(vrf)
-        vrf = Layer_V_RF_3(vrf)
-        vrf = Layer_BN22(vrf)
-        vrf = Layer_V_RF_4(vrf)
-        vrf = Layer_BN23(vrf)
-        vrf = Layer_V_RF_5(vrf)
-        vrf = Layer_BN24(vrf)
-        vrf = Layer_drop6(vrf)
-        vrf = Layer_V_RF_6(vrf)
-        vrf = Layer_BN25(vrf)
-        vrf = Layer_V_RF_7(vrf)
-        # vrf = reshaper_V_RF(vrf)
-
-        wrf = Layer_W_RF_1(x)
-        wrf = Layer_BN26(wrf)
-        wrf = Layer_W_RF_2(wrf)
-        wrf = Layer_BN27(wrf)
-        wrf = Layer_drop7(wrf)
-        wrf = Layer_W_RF_3(wrf)
-        wrf = Layer_BN28(wrf)
-        wrf = Layer_W_RF_4(wrf)
-        wrf = Layer_BN29(wrf)
-        wrf = Layer_W_RF_5(wrf)
-        wrf = Layer_BN30(wrf)
-        wrf = Layer_drop8(wrf)
-        wrf = Layer_W_RF_6(wrf)
-        wrf = Layer_BN31(wrf)
-        wrf = Layer_W_RF_7(wrf)
-        # wrf = reshaper_W_RF(wrf)
-
-        func_model = Model(inputs=csi, outputs=[vd, wd, vrf, wrf])
         return func_model
 
+    def resnet_4_large_MIMOFDM_transmitter(self):
+        kernels = [min(self.K, self.convolutional_kernels),
+                   min(self.N_u_a, self.convolutional_kernels),
+                   min(self.N_b_a, self.convolutional_kernels)]
+        csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
 
-    #
-    #
-    # # sequential implementation
-    # def custom_actication(self, inputs):
-    #     V_D, W_D, vrf, wrf = inputs
-    #
-    #     V_D_cplx = tf.complex(V_D[:, :, :, :, 0], V_D[:, :, :, :, 1])
-    #     W_D_cplx = tf.complex(W_D[:, :, :, :, 0], W_D[:, :, :, :, 1])
-    #     vrf_cplx = tf.complex(tf.cos(vrf), tf.sin(vrf))
-    #     wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
-    #
-    #     # partially-connected analog beamformer matrix implementation ----------------
-    #     V_RF_list_forall_samples = []
-    #     W_RF_list_forall_samples = []
-    #     V_D_new_forall_samples = []
-    #
-    #     for ij in range(self.BATCHSIZE):
-    #         # partially-connected analog beamformer matrix implementation --------------
-    #
-    #         # for BS
-    #         vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx[ij, :], shape=[self.N_b_a, 1]),
-    #                                      tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
-    #         # print('vrf_zero_padded', vrf_zero_padded.shape)
-    #         r_bs = int(self.N_b_a / self.N_b_rf)
-    #         T2_BS = []
-    #         for i in range(self.N_b_rf):
-    #             T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
-    #             # print('T0_BS', T0_BS.shape)
-    #             T1_BS = tf.roll(T0_BS, shift=i, axis=1)
-    #             # print('T1_BS', T1_BS.shape)
-    #             T2_BS.append(T1_BS)
-    #         V_RF_per_sample = tf.concat(T2_BS, axis=0)
-    #         # print('V_RF_per_sample', V_RF_per_sample.shape)
-    #         V_RF_list_forall_samples.append(V_RF_per_sample)
-    #
-    #         # for UE
-    #         wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx[ij, :], shape=[self.N_u_a, 1]),
-    #                                      tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
-    #         r_ue = int(self.N_u_a / self.N_u_rf)
-    #         T2_UE = []
-    #         for i in range(self.N_u_rf):
-    #             T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
-    #             T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-    #             T2_UE.append(T1_UE)
-    #         W_RF_per_sample = tf.concat(T2_UE, axis=0)
-    #         W_RF_list_forall_samples.append(W_RF_per_sample)
-    #
-    #         # per subcarrier power normalization ---------------------------------------
-    #         V_D_new_per_sample = []
-    #         # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
-    #         for k in range(self.K):
-    #             T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
-    #             T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-    #             # denum = tf.add(denum , tf.linalg.trace(T1))
-    #             denum = (tf.linalg.trace(T1))#, tf.complex(1e-16,
-    #                                                 #           1e-16))  ####################################################### numeric precision flaw
-    #             # denum = tf.linalg.trace(T1)
-    #             # V_D_new_forall_samples.append(tf.divide( tf.multiply(V_D_cplx[ij,:,:,:] , tf.cast(tf.sqrt(P) ,dtype=tf.complex64)) , tf.sqrt(denum)))
-    #             V_D_new_per_sample.append(
-    #                 tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
-    #                           tf.sqrt(denum)))
-    #         V_D_new_forall_samples.append(tf.stack(V_D_new_per_sample, axis=0))
-    #
-    #     V_RF_cplx = tf.stack(V_RF_list_forall_samples, axis=0)
-    #     W_RF_cplx = tf.stack(W_RF_list_forall_samples, axis=0)
-    #     V_D_new = tf.stack(V_D_new_forall_samples, axis=0)
-    #
-    #     # print(V_RF_cplx.shape)
-    #
-    #     return V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx
-    #
-    #
+        generic_part_obj = Generic_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                  kernels=kernels,
+                                                                  convolutional_strides=self.convolutional_strides,
+                                                                  convolutional_dilation=self.convolutional_dilation,
+                                                                  trainablity=True,
+                                                                  subcarrier_strides= self.subcarrier_strides,
+                                                                  N_b_a_strides= self.N_b_a_strides,
+                                                                  N_u_a_strides=self.N_u_a_strides)
+        specialized_part_obj = Specialized_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                          kernels=kernels,
+                                                                          convolutional_strides=self.convolutional_strides,
+                                                                          convolutional_dilation=self.convolutional_dilation,
+                                                                          N_b_a=self.N_b_a,
+                                                                          N_b_rf=self.N_b_rf,
+                                                                          N_u_a=self.N_u_a,
+                                                                          N_u_rf=self.N_u_rf,
+                                                                          N_s=self.N_s,
+                                                                          K=self.K,
+                                                                          PTRS_seperation=self.PTRS_seperation,
+                                                                          trainablity=True,
+                                                                          subcarrier_strides=self.subcarrier_strides,
+                                                                          N_b_a_strides=self.N_b_a_strides,
+                                                                          N_u_a_strides=self.N_u_a_strides)
 
+        # Models
+        vd_generic, vrf_generic = generic_part_obj(csi)
+        vd, vrf = specialized_part_obj(vd_generic, vrf_generic)
+        func_model = Model(inputs=[csi], outputs=[vd, vrf])
 
+        return func_model
 
+    @tf.function
+    def custom_actication_transmitter(self, inputs):
+        V_D, vrf = inputs
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #
-    # # map_fn implementation
-    # def custom_actication(self, inputs):
-    #     V_D, W_D, vrf, wrf = inputs
-    #
-    #     V_D_cplx = tf.complex(V_D[:, :, :, :, 0], V_D[:, :, :, :, 1])
-    #     W_D_cplx = tf.complex(W_D[:, :, :, :, 0], W_D[:, :, :, :, 1])
-    #     vrf_cplx = tf.complex(tf.cos(vrf), tf.sin(vrf))
-    #     wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
-    #
-    #     # partially-connected analog beamformer matrix implementation ----------------
-    #
-    #     # --------------------------------------------------------------------------------------------------------------
-    #     bundeled_inputs_0 = [vrf_cplx, wrf_cplx, V_D_cplx]
-    #     # print('vrf_cplx shape', vrf_cplx.shape)
-    #     # print('wrf_cplx shape', wrf_cplx.shape)
-    #     # print('V_D_cplx shape', V_D_cplx.shape)
-    #
-    #     V_RF_cplx, W_RF_cplx, V_D_new_cplx = tf.map_fn(self.custorm_activation_per_sample, bundeled_inputs_0,
-    #                                                fn_output_signature=(tf.complex64, tf.complex64, tf.complex64), parallel_iterations=self.BATCHSIZE)
-    #
-    #     return V_D_new_cplx, W_D_cplx, V_RF_cplx, W_RF_cplx
-    #
-    #
-    # def normalize_power_per_subcarrier(self, bundeled_inputs_0):
-    #     V_RF, V_D_k = bundeled_inputs_0
-    #     T0 = tf.linalg.matmul(V_RF, V_D_k, adjoint_a=False, adjoint_b=False)
-    #     T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-    #     # denum = tf.add(denum , tf.linalg.trace(T1))
-    #     denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16, 1e-16)) ###### numeric precision flaw
-    #     V_D_k_normalized = tf.divide(tf.multiply(V_D_k, tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),tf.sqrt(denum))
-    #     return V_D_k_normalized
-    #
-    #
-    # def custorm_activation_per_sample(self, bundeled_inputs_0):
-    #     vrf_cplx, wrf_cplx, V_D_cplx = bundeled_inputs_0
-    #     # for BS
-    #     vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx, shape=[self.N_b_a, 1]),
-    #                                  tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
-    #     # print('vrf_zero_padded', vrf_zero_padded.shape)
-    #     r_bs = int(self.N_b_a / self.N_b_rf)
-    #     T2_BS = []
-    #     for i in range(self.N_b_rf):
-    #         T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
-    #         # print('T0_BS', T0_BS.shape)
-    #         T1_BS = tf.roll(T0_BS, shift=i, axis=1)
-    #         # print('T1_BS', T1_BS.shape)
-    #         T2_BS.append(T1_BS)
-    #     V_RF_per_sample = tf.concat(T2_BS, axis=0)
-    #
-    #     # for UE
-    #     wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx, shape=[self.N_u_a, 1]),
-    #                                  tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
-    #     r_ue = int(self.N_u_a / self.N_u_rf)
-    #     T2_UE = []
-    #     for i in range(self.N_u_rf):
-    #         T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
-    #         T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-    #         T2_UE.append(T1_UE)
-    #     W_RF_per_sample = tf.concat(T2_UE, axis=0)
-    #
-    #     # per subcarrier power normalization ---------------------------------------
-    #
-    #     # repeating inputs for vectorization
-    #     V_RF_per_sample_repeated_K_times = tf.tile([V_RF_per_sample], multiples=[self.K, 1, 1])
-    #     bundeled_inputs_1 = [V_RF_per_sample_repeated_K_times, V_D_cplx]
-    #     V_D_cplx_normalized_per_sample = tf.map_fn(self.normalize_power_per_subcarrier, bundeled_inputs_1,
-    #                                     fn_output_signature=tf.complex64, parallel_iterations=self.K)
-    #
-    #
-    #     return V_RF_per_sample, W_RF_per_sample, V_D_cplx_normalized_per_sample
-    #
-    #
-    #
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # sequential implementation
-
-    def custom_actication(self, inputs):
-        V_D, W_D, vrf, wrf = inputs
-
-        V_D_cplx = tf.complex(V_D[:, :, :, :, 0], V_D[:, :, :, :, 1])
-        W_D_cplx = tf.complex(W_D[:, :, :, :, 0], W_D[:, :, :, :, 1])
-        vrf_cplx = tf.complex(tf.cos(vrf), tf.sin(vrf))
-        wrf_cplx = tf.complex(tf.cos(wrf), tf.sin(wrf))
+        V_D_cplx = tf.complex(tf.cast(V_D[:, :, :, :, 0], tf.float32), tf.cast(V_D[:, :, :, :, 1], tf.float32))
+        vrf_cplx = tf.complex(tf.cast(tf.cos(vrf), tf.float32), tf.cast(tf.sin(vrf), tf.float32))
 
         # partially-connected analog beamformer matrix implementation ----------------
 
-        for ij in range(self.BATCHSIZE):
-            # partially-connected analog beamformer matrix implementation --------------
+        bundeled_inputs_0 = [V_D_cplx, vrf_cplx]
+        V_D_new_cplx, V_RF_cplx = tf.map_fn(self.custorm_activation_per_sample_transmitter, bundeled_inputs_0,
+                                            fn_output_signature=(tf.complex64, tf.complex64),
+                                            parallel_iterations=self.BATCHSIZE)
+        return V_D_new_cplx, V_RF_cplx
 
-            # for BS
-            vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx[ij, :], shape=[self.N_b_a, 1]),
-                                         tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
-            # print('vrf_zero_padded', vrf_zero_padded.shape)
-            r_bs = int(self.N_b_a / self.N_b_rf)
-            for i in range(self.N_b_rf):
-                T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
-                # print('T0_BS', T0_BS.shape)
-                T1_BS = tf.roll(T0_BS, shift=i, axis=1)
-                # print('T1_BS', T1_BS.shape)
-                if (i == 0):
-                    V_RF_per_sample = T1_BS
-                else:
-                    V_RF_per_sample = tf.concat([V_RF_per_sample, T1_BS], axis=0)
+    @tf.function
+    def normalize_power_per_subcarrier_transmitter(self, bundeled_inputs_0):
+        V_D_k, V_RF = bundeled_inputs_0
+        T0 = tf.linalg.matmul(V_RF, V_D_k, adjoint_a=False, adjoint_b=False)
+        T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
+        # denum = tf.linalg.trace(T1) #
+        denum = tf.add(tf.linalg.trace(T1), tf.complex(1e-16, 1e-16))  ###### numeric precision flaw
+        V_D_k_normalized = tf.divide(tf.multiply(V_D_k, tf.cast(tf.sqrt(self.P), dtype=tf.complex64)), tf.sqrt(denum))
+        return V_D_k_normalized
 
-            if (ij == 0):
-                V_RF_cplx = tf.expand_dims(V_RF_per_sample, axis=0)
-            else:
-                V_RF_cplx = tf.concat([V_RF_cplx, tf.expand_dims(V_RF_per_sample, axis=0)], axis=0)
+    @tf.function
+    def custorm_activation_per_sample_transmitter(self, bundeled_inputs_0):
+        V_D_cplx, vrf_cplx = bundeled_inputs_0
+        # for BS
+        vrf_zero_padded = tf.concat([tf.reshape(vrf_cplx, shape=[self.N_b_a, 1]),
+                                     tf.zeros(shape=[self.N_b_a, self.N_b_rf - 1], dtype=tf.complex64)], axis=1)
+        r_bs = int(self.N_b_a / self.N_b_rf)
+        T2_BS = []
+        for i in range(self.N_b_rf):
+            T0_BS = vrf_zero_padded[r_bs * i: r_bs * (i + 1), :]
+            T1_BS = tf.roll(T0_BS, shift=i, axis=1)
+            T2_BS.append(T1_BS)
+        V_RF_per_sample = tf.concat(T2_BS, axis=0)
 
-            # for UE
-            wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx[ij, :], shape=[self.N_u_a, 1]),
-                                         tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
-            r_ue = int(self.N_u_a / self.N_u_rf)
+        # repeating inputs for vectorization
+        V_RF_per_sample_repeated_K_times = tf.tile([V_RF_per_sample], multiples=[self.K, 1, 1])
+        bundeled_inputs_1 = [V_D_cplx, V_RF_per_sample_repeated_K_times]
+        V_D_cplx_normalized_per_sample = tf.map_fn(self.normalize_power_per_subcarrier_transmitter, bundeled_inputs_1,
+                                                   fn_output_signature=tf.complex64, parallel_iterations=self.K)
 
-            for i in range(self.N_u_rf):
-                T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
-                T1_UE = tf.roll(T0_UE, shift=i, axis=1)
-                if (i==0):
-                    W_RF_per_sample = T1_UE
-                else:
-                    W_RF_per_sample = tf.concat([W_RF_per_sample, T1_UE], axis=0)
+        return V_D_cplx_normalized_per_sample, V_RF_per_sample
 
-            if (ij == 0):
-                W_RF_cplx = tf.expand_dims(W_RF_per_sample, axis=0)
-            else:
-                W_RF_cplx = \
-                    tf.concat([W_RF_cplx, tf.expand_dims(W_RF_per_sample, axis=0)], axis=0)
+    def resnet_4_small_MIMOFDM_receiver(self):
+        kernels = [min(self.K, self.convolutional_kernels),
+                   min(self.N_u_a, self.convolutional_kernels),
+                   min(self.N_b_a, self.convolutional_kernels)]
+        csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
 
-            # per subcarrier power normalization ---------------------------------------
-            # denum = tf.zeros( shape=[1] , dtype=tf.complex64)
-            for k in range(self.K):
-                T0 = tf.linalg.matmul(V_RF_per_sample, V_D_cplx[ij, k, :, :], adjoint_a=False, adjoint_b=False)
-                T1 = tf.linalg.matmul(T0, T0, adjoint_a=False, adjoint_b=True)
-                # denum = tf.add(denum , tf.linalg.trace(T1))
-                denum = (tf.linalg.trace(T1))#, tf.complex(1e-16,
-                                                    #           1e-16))  ####################################################### numeric precision flaw
-                # denum = tf.linalg.trace(T1)
-                # V_D_new_forall_samples.append(tf.divide( tf.multiply(V_D_cplx[ij,:,:,:] , tf.cast(tf.sqrt(P) ,dtype=tf.complex64)) , tf.sqrt(denum)))
-                if (k == 0):
-                    V_D_new_forall_k = tf.expand_dims(tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
-                                   tf.sqrt(denum)), axis=0)
-                else:
-                    V_D_new_forall_k = tf.concat([V_D_new_forall_k, tf.expand_dims(tf.divide(tf.multiply(V_D_cplx[ij, k, :, :], tf.cast(tf.sqrt(self.P), dtype=tf.complex64)),
-                                   tf.sqrt(denum)), axis=0)], axis=0)
+        generic_part_obj = Generic_2_ns_4_small_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                  kernels=kernels,
+                                                                  convolutional_strides=self.convolutional_strides,
+                                                                  convolutional_dilation=self.convolutional_dilation,
+                                                                  trainablity=self.generic_part_trainable)
+        specialized_part_obj = Specialized_2_ns_4_small_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                          kernels=kernels,
+                                                                          convolutional_strides=self.convolutional_strides,
+                                                                          convolutional_dilation=self.convolutional_dilation,
+                                                                          N_b_a=self.N_b_a,
+                                                                          N_b_rf=self.N_b_rf,
+                                                                          N_u_a=self.N_u_a,
+                                                                          N_u_rf=self.N_u_rf,
+                                                                          N_s=self.N_s,
+                                                                          K=self.K,
+                                                                          PTRS_seperation=self.PTRS_seperation,
+                                                                          trainablity=self.specialized_part_trainable)
+        wd_generic, wrf_generic = generic_part_obj(csi)
+        wd, wrf = specialized_part_obj(wd_generic, wrf_generic)
+        func_model = Model(inputs=[csi], outputs=[wd, wrf])
+        return func_model
 
-            if (ij == 0):
-                V_D_new = tf.expand_dims(V_D_new_forall_k, axis=0)
-            else:
-                V_D_new = tf.concat([V_D_new, tf.expand_dims(V_D_new_forall_k, axis=0)], axis=0)
+    def resnet_4_large_MIMOFDM_receiver(self):
+        kernels = [min(self.K, self.convolutional_kernels),
+                   min(self.N_u_a, self.convolutional_kernels),
+                   min(self.N_b_a, self.convolutional_kernels)]
+        csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
 
-        # print(tf.norm(tf.matmul(V_RF_cplx[0,:] , V_D_new[0,0,:])))
-        # print(tf.norm(tf.matmul(W_RF_cplx[0,:] , W_D_cplx[0,0,:])))
+        generic_part_obj = Generic_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                  kernels=kernels,
+                                                                  convolutional_strides=self.convolutional_strides,
+                                                                  convolutional_dilation=self.convolutional_dilation,
+                                                                  trainablity=True,
+                                                                  subcarrier_strides= self.subcarrier_strides,
+                                                                  N_b_a_strides= self.N_b_a_strides,
+                                                                  N_u_a_strides=self.N_u_a_strides)
+        specialized_part_obj = Specialized_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
+                                                                          kernels=kernels,
+                                                                          convolutional_strides=self.convolutional_strides,
+                                                                          convolutional_dilation=self.convolutional_dilation,
+                                                                          N_b_a=self.N_b_a,
+                                                                          N_b_rf=self.N_b_rf,
+                                                                          N_u_a=self.N_u_a,
+                                                                          N_u_rf=self.N_u_rf,
+                                                                          N_s=self.N_s,
+                                                                          K=self.K,
+                                                                          PTRS_seperation=self.PTRS_seperation,
+                                                                          trainablity=True,
+                                                                          subcarrier_strides=self.subcarrier_strides,
+                                                                          N_b_a_strides=self.N_b_a_strides,
+                                                                          N_u_a_strides=self.N_u_a_strides)
 
-        return V_D_new, W_D_cplx, V_RF_cplx, W_RF_cplx
+        # Models
+        vd_generic, vrf_generic = generic_part_obj(csi)
+        vd, vrf = specialized_part_obj(vd_generic, vrf_generic)
+        func_model = Model(inputs=[csi], outputs=[vd, vrf])
+
+        return func_model
+    @tf.function
+    def custom_actication_receiver(self, inputs0):
+        W_D, wrf = inputs0
+        W_D_cplx = tf.complex(tf.cast(W_D[:, :, :, :, 0], tf.float32), tf.cast(W_D[:, :, :, :, 1], tf.float32))
+        wrf_cplx = tf.complex(tf.cast(tf.cos(wrf), tf.float32), tf.cast(tf.sin(wrf), tf.float32))
+
+        # partially-connected analog beamformer matrix implementation ----------------
+
+        W_RF_cplx = tf.map_fn(self.custorm_activation_per_sample_receiver, wrf_cplx,
+                              fn_output_signature=(tf.complex64),
+                              parallel_iterations=self.BATCHSIZE)
+
+        return W_D_cplx, W_RF_cplx
+
+    @tf.function
+    def custorm_activation_per_sample_receiver(self, wrf_cplx):
+        # for UE
+        wrf_zero_padded = tf.concat([tf.reshape(wrf_cplx, shape=[self.N_u_a, 1]),
+                                     tf.zeros(shape=[self.N_u_a, self.N_u_rf - 1], dtype=tf.complex64)], axis=1)
+        r_ue = int(self.N_u_a / self.N_u_rf)
+        T2_UE = []
+        for i in range(self.N_u_rf):
+            T0_UE = wrf_zero_padded[r_ue * i: r_ue * (i + 1), :]
+            T1_UE = tf.roll(T0_UE, shift=i, axis=1)
+            T2_UE.append(T1_UE)
+        W_RF_per_sample = tf.concat(T2_UE, axis=0)
+
+        return W_RF_per_sample

@@ -17,7 +17,7 @@ class ML_model_class(tf.keras.Model):
                  N_c, N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE, phase_shift_stddiv,
                  truncation_ratio_keep, sampling_ratio_time_domain_keep, Nsymb, Ts, fc, c, PHN_innovation_std,
                  mat_fname, eval_dataset_size, mode,
-                 phase_noise_exists_while_training):
+                 phase_noise_exists_while_training, number_of_OFDM_symbols_considered):
         super(ML_model_class, self).__init__()
         self.CNN_transmitter = CNN_transmitter
         self.CNN_receiver = CNN_receiver
@@ -49,6 +49,7 @@ class ML_model_class(tf.keras.Model):
         self.PHN_innovation_std = PHN_innovation_std
         self.mode = mode
         self.phase_noise_exists_while_training = phase_noise_exists_while_training
+        self.number_of_OFDM_symbols_considered = number_of_OFDM_symbols_considered
 
     def compile(self, optimizer, loss, activation_TX, activation_RX,
                 metric_capacity_in_presence_of_phase_noise):
@@ -61,25 +62,26 @@ class ML_model_class(tf.keras.Model):
 
     @tf.function
     def NN_input_preparation(self, H_tilde):
-        csi_tx = H_tilde[:, 0, :, :, :, :]
+        csi_tx = tf.tile(tf.expand_dims(H_tilde[:, 0, :, :, :, :], axis=1),
+                         multiples=[1, self.Nsymb, 1, 1, 1, 1])
         subcarrier_mask_ptrs = tf.sparse.to_dense(tf.sparse.reorder(tf.sparse.SparseTensor(
             indices=tf.reshape(tf.cast(tf.range(0, self.K, self.PTRS_seperation), tf.int64),
                                shape=[round(self.K / self.PTRS_seperation), 1]),
             values=tf.ones(shape=[round(self.K / self.PTRS_seperation)], dtype=tf.int32),
             dense_shape=[self.K])))
-        subcarrier_mask_non_ptrs = 1 - subcarrier_mask_ptrs
+
         H_tilde_ptrs = tf.boolean_mask(H_tilde, subcarrier_mask_ptrs,
                                        axis=2)  # batch, Nsymb, K, ... [should mask on the dimension k]
+        subcarrier_mask_non_ptrs = 1 - subcarrier_mask_ptrs
         H_tilde_non_ptrs = tf.boolean_mask(H_tilde, subcarrier_mask_non_ptrs,
                                            axis=2)  # batch, Nsymb, K, ... [should mask on the dimension k]
 
         # the following line produces the interleaved measured fresh H_tilde_ns for some k and old H_tilde_0 for the rest of the k
         uu= tf.tile(tf.expand_dims(H_tilde_non_ptrs[:, 0, :, :, :, :], axis=1),
-                                                                            multiples=[1, self.Nsymb, 1, 1, 1, 1])
+                    multiples=[1, self.Nsymb, 1, 1, 1, 1])
         H_tilde_ptrs_and_non_ptrs_stacked = tf.concat([H_tilde_ptrs, uu], axis=2)
         csi_rx = H_tilde_ptrs_and_non_ptrs_stacked# tf.reshape(H_tilde_ptrs_and_non_ptrs_stacked,
                             # [self.BATCHSIZE, self.Nsymb, self.K, self.N_u_a, self.N_b_a, 2])
-
         return csi_tx, csi_rx
 
     @tf.function
@@ -95,29 +97,25 @@ class ML_model_class(tf.keras.Model):
                 W_D_tmp = []
                 W_RF_tmp = []
 
-                selected_symbols = [0]
-                # selected_symbols = np.random.choice(self.Nsymb,
-                #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-                #                                     replace=False)
+                rand_start = np.random.random_integers(low= 0, high= self.Nsymb - self.number_of_OFDM_symbols_considered)
+                # selected_symbols = range(rand_start, rand_start + self.number_of_OFDM_symbols_considered)
+                selected_symbols = range(self.Nsymb)
 
-                # rand_start = np.random.random_integers(low= 0, high= round(1/self.sampling_ratio_time_domain_keep))
-                # selected_symbols = range(0 + rand_start, self.Nsymb + rand_start - round(1/self.sampling_ratio_time_domain_keep)+1,
-                #                          round(1/self.sampling_ratio_time_domain_keep))
-
-                the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
+                V_D, V_RF = self.CNN_transmitter(tf.tile(tf.expand_dims(H_tilde[:, 0, :, :, :, :], axis=1),
+                                                     multiples=[1, round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1, 1]))
+                W_D, W_RF = self.CNN_receiver(tf.tile(tf.expand_dims(H_tilde[:, 0, :, :, :, :], axis=1),
+                                                     multiples=[1, round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1, 1]))
+                i=0
                 for ns in selected_symbols:
-                    the_mask_of_ns[ns] = 1
-                    # V_D, V_RF = self.CNN_transmitter([tf.squeeze(H_tilde[:, 0, :, :, :, :])])
-                    V_D, V_RF = self.CNN_transmitter(tf.squeeze(H_tilde[:, 0, :, :, :, :]))
-                    V_D, V_RF = self.activation_TX([V_D, V_RF])
-                    V_D_tmp.append(V_D)
-                    V_RF_tmp.append(V_RF)
 
-                    # W_D, W_RF = self.CNN_receiver([tf.squeeze(H_tilde[:, 0, :, :, :, :])])
-                    W_D, W_RF = self.CNN_receiver(tf.squeeze(H_tilde[:, 0, :, :, :, :]))
-                    W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
-                    W_D_tmp.append(W_D)
-                    W_RF_tmp.append(W_RF)
+                    VV_D, VV_RF = self.activation_TX([V_D[:,i,:], V_RF[:,i,:]])
+                    V_D_tmp.append(VV_D)
+                    V_RF_tmp.append(VV_RF)
+
+                    WW_D, WW_RF = self.activation_RX([W_D[:,i,:], W_RF[:,i,:]])  # batch, 1, K, ...
+                    W_D_tmp.append(WW_D)
+                    W_RF_tmp.append(WW_RF)
+                    i=i+1
 
                 V_D = tf.stack(V_D_tmp, axis=1)  # [should stack on axis ns]
                 V_RF = tf.stack(V_RF_tmp, axis=1)  # [should stack on axis ns]
@@ -135,6 +133,10 @@ class ML_model_class(tf.keras.Model):
         else:
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
+            # rand_start = np.random.random_integers(low=0,
+            #                                        high=self.Nsymb - self.number_of_OFDM_symbols_considered)
+            # selected_symbols = range(rand_start, rand_start + self.number_of_OFDM_symbols_considered)
+            selected_symbols = range(self.Nsymb)
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
 
             with tf.GradientTape() as tape:
@@ -143,31 +145,19 @@ class ML_model_class(tf.keras.Model):
                 V_RF_tmp = []
                 W_D_tmp = []
                 W_RF_tmp = []
+                V_D, V_RF = self.CNN_transmitter(csi_tx)
+                W_D, W_RF = self.CNN_receiver(csi_rx)
 
-                selected_symbols = [0]
-                # selected_symbols = np.random.choice(self.Nsymb,
-                #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-                #                                     replace=False)
-                # rand_start = np.random.random_integers(low=0, high=round(1 / self.sampling_ratio_time_domain_keep))
-                # selected_symbols = range(0 + rand_start,
-                #                          self.Nsymb + rand_start - round(1 / self.sampling_ratio_time_domain_keep)+1,
-                #                          round(1 / self.sampling_ratio_time_domain_keep))
-                # print('selected_symbols = ======================', selected_symbols)
-                the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
+                i=0
                 for ns in selected_symbols:
-                    the_mask_of_ns[ns] = 1
-                    # V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx)])
+                    VV_D, VV_RF = self.activation_TX([V_D[:,i,:], V_RF[:,i,:]])
+                    V_D_tmp.append(VV_D)
+                    V_RF_tmp.append(VV_RF)
 
-                    V_D, V_RF = self.CNN_transmitter(tf.squeeze(csi_tx))
-                    V_D, V_RF = self.activation_TX([V_D, V_RF])
-                    V_D_tmp.append(V_D)
-                    V_RF_tmp.append(V_RF)
-
-                    # W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                    W_D, W_RF = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
-                    W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
-                    W_D_tmp.append(W_D)
-                    W_RF_tmp.append(W_RF)
+                    WW_D, WW_RF = self.activation_RX([W_D[:,i,:], W_RF[:,i,:]])  # batch, 1, K, ...
+                    W_D_tmp.append(WW_D)
+                    W_RF_tmp.append(WW_RF)
+                    i = i+1
 
                 V_D = tf.stack(V_D_tmp, axis=1)  # [should stack on axis ns]
                 V_RF = tf.stack(V_RF_tmp, axis=1)  # [should stack on axis ns]
@@ -175,10 +165,8 @@ class ML_model_class(tf.keras.Model):
                 W_D = tf.stack(W_D_tmp, axis=1)  # [should stack on axis ns]
                 W_RF = tf.stack(W_RF_tmp, axis=1)  # [should stack on axis ns]
 
-                Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask= the_mask_of_ns, axis=1)
-                Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask= the_mask_of_ns, axis=1)
+                inputs2 = [V_D, W_D, H_complex, V_RF, W_RF, Lambda_B, Lambda_U]
 
-                inputs2 = [V_D, W_D, H_complex, V_RF, W_RF, Lambda_B_sampled, Lambda_U_sampled]
                 d_loss, _, _, _ = self.loss(inputs2)
 
             trainables = self.CNN_transmitter.trainable_weights + self.CNN_receiver.trainable_weights
@@ -195,39 +183,33 @@ class ML_model_class(tf.keras.Model):
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
 
-            selected_symbols = [0]
-            # selected_symbols = np.random.choice(self.Nsymb,
-            #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-            #                                     replace=False)
-            # rand_start = np.random.random_integers(low=0, high=round(1 / self.sampling_ratio_time_domain_keep))
-            # selected_symbols = range(0 + rand_start,
-            #                          self.Nsymb + rand_start - round(1 / self.sampling_ratio_time_domain_keep)+1,
-            #                          round(1 / self.sampling_ratio_time_domain_keep))
-
+            # rand_start = np.random.random_integers(low=0,
+            #                                        high=self.Nsymb - self.number_of_OFDM_symbols_considered)
+            # selected_symbols = range(rand_start, rand_start + self.number_of_OFDM_symbols_considered)
+            selected_symbols = range(self.Nsymb)
             V_D_tmp = []
             V_RF_tmp = []
             W_D_tmp = []
             W_RF_tmp = []
-            the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
+            V_D, V_RF = self.CNN_transmitter(tf.tile(tf.expand_dims(H_tilde[:, 0, :, :, :, :], axis=1),
+                                                     multiples=[1, round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1, 1]))  # batch, Nsymb, K, ... [only at ns=0]
+            W_D, W_RF = self.CNN_receiver(tf.tile(tf.expand_dims(H_tilde[:, 0, :, :, :, :], axis=1),
+                                                     multiples=[1, round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1, 1]))
+            i=0
             for ns in selected_symbols:
-                the_mask_of_ns[ns] = 1
-                # V_D, V_RF = self.CNN_transmitter([tf.squeeze(H_tilde[:, 0, :, :, :, :])])  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.CNN_transmitter(tf.squeeze(H_tilde[:, 0, :, :, :, :]))  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.activation_TX([V_D, V_RF])
-                V_D_tmp.append(V_D)
-                V_RF_tmp.append(V_RF)
+                VV_D, VV_RF = self.activation_TX([V_D[:,i,:], V_RF[:,i,:]])
+                V_D_tmp.append(VV_D)
+                V_RF_tmp.append(VV_RF)
 
-                # W_D, W_RF = self.CNN_receiver([tf.squeeze(H_tilde[:, 0, :, :, :, :])])
-                W_D, W_RF = self.CNN_receiver(tf.squeeze(H_tilde[:, 0, :, :, :, :]))
-                W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
-                W_D_tmp.append(W_D)
-                W_RF_tmp.append(W_RF)
+                WW_D, WW_RF = self.activation_RX([W_D[:,i,:], W_RF[:,i,:]])  # batch, 1, K, ...
+                W_D_tmp.append(WW_D)
+                W_RF_tmp.append(WW_RF)
+                i = i+1
 
             V_D = tf.stack(V_D_tmp, axis=1)  # [should stack on axis ns]
             V_RF = tf.stack(V_RF_tmp, axis=1)  # [should stack on axis ns]
             W_D = tf.stack(W_D_tmp, axis=1)  # [should stack on axis ns]
             W_RF = tf.stack(W_RF_tmp, axis=1)  # [should stack on axis ns]
-
 
             inputs2 = [V_D, W_D, tf.squeeze(H_tilde_complex[:,0,:,:,:]), V_RF, W_RF]
             d_loss = self.loss(inputs2)
@@ -238,74 +220,64 @@ class ML_model_class(tf.keras.Model):
             V_RF_tmp_ = []
             W_D_tmp_ = []
             W_RF_tmp_ = []
+            # selected_symbols = range(self.Nsymb)
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
+            V_D_, V_RF_ = self.CNN_transmitter(csi_tx)
+            W_D_, W_RF_ = self.CNN_receiver(csi_rx)
             # for ns in range(self.Nsymb): # todo: return to this when done testing singleton ns set
+            i = 0
             for ns in selected_symbols: # todo: return to this when done testing singleton ns set
-                the_mask_of_ns[ns] = 1
-            # V_D_, V_RF_ = self.CNN_transmitter([tf.squeeze(csi_tx)])
-                V_D_, V_RF_ = self.CNN_transmitter(tf.squeeze(csi_tx))
-                V_D_, V_RF_ = self.activation_TX([V_D_, V_RF_])  # batch, 1, K, ...
-                V_D_tmp_.append(V_D_)
-                V_RF_tmp_.append(V_RF_)
+                VV_D_, VV_RF_ = self.activation_TX([V_D_[:,i,:], V_RF_[:,i,:]])  # batch, 1, K, ...
+                V_D_tmp_.append(VV_D_)
+                V_RF_tmp_.append(VV_RF_)
 
-                # W_D_, W_RF_ = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D_, W_RF_ = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
-                W_D_, W_RF_ = self.activation_RX([W_D_, W_RF_])  # batch, 1, K, ...
-                W_D_tmp_.append(W_D_)
-                W_RF_tmp_.append(W_RF_)
+                WW_D_, WW_RF_ = self.activation_RX([W_D_[:,i,:], W_RF_[:,i,:]])  # batch, 1, K, ...
+                W_D_tmp_.append(WW_D_)
+                W_RF_tmp_.append(WW_RF_)
+                i = i+1
 
             V_D_ = tf.stack(V_D_tmp_, axis=1)  # batch, Nsymb, K, ... [should stack on axis ns]
             V_RF_ = tf.stack(V_RF_tmp_, axis=1)  # batch, Nsymb, ... [should stack on axis ns]
             W_D_ = tf.stack(W_D_tmp_, axis=1)  # batch, Nsymb, K, ... [should stack on axis ns]
             W_RF_ = tf.stack(W_RF_tmp_, axis=1)  # batch, Nsymb, ... [should stack on axis ns]
-            Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask=the_mask_of_ns, axis=1)
-            Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask=the_mask_of_ns, axis=1)
-
             capacity_value, _, _, _ = self.metric_capacity_in_presence_of_phase_noise(
-                [V_D_, W_D_, H_complex, V_RF_, W_RF_, Lambda_B_sampled, Lambda_U_sampled])
+                [V_D_, W_D_, H_complex, V_RF_, W_RF_, Lambda_B, Lambda_U])
             capacity_metric_test.update_state(capacity_value)
             return {"neg_capacity_test_loss": loss_metric_test.result(),
                     'neg_capacity_performance_metric': capacity_metric_test.result()}
         else:
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
+            selected_symbols = range(self.Nsymb)
+            # rand_start = np.random.random_integers(low=0,
+            #                                        high=self.Nsymb - self.number_of_OFDM_symbols_considered)
+            # selected_symbols = range(rand_start, rand_start+ self.number_of_OFDM_symbols_considered)
+
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
-            selected_symbols = [0]
-            # selected_symbols = np.random.choice(self.Nsymb,
-            #                                         round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-            #                                         replace=False)
-            # rand_start = np.random.random_integers(low=0, high=round(1 / self.sampling_ratio_time_domain_keep))
-            # selected_symbols = range(0 + rand_start,
-            #                          self.Nsymb + rand_start - round(1 / self.sampling_ratio_time_domain_keep)+1,
-            #                          round(1 / self.sampling_ratio_time_domain_keep))
 
             V_D_tmp = []
             V_RF_tmp = []
             W_D_tmp = []
             W_RF_tmp = []
-            the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
+            V_D, V_RF = self.CNN_transmitter(csi_tx)  # batch, Nsymb, K, ... [only at ns=0]
+            W_D, W_RF = self.CNN_receiver(csi_rx)
+            i = 0
             for ns in selected_symbols:
-                the_mask_of_ns[ns] = 1
-                # V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx)])  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.CNN_transmitter(tf.squeeze(csi_tx))  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.activation_TX([V_D, V_RF])
-                V_D_tmp.append(V_D)
-                V_RF_tmp.append(V_RF)
+                VV_D, VV_RF = self.activation_TX([V_D[:,i,:], V_RF[:,i,:]])
+                V_D_tmp.append(VV_D)
+                V_RF_tmp.append(VV_RF)
 
-                # W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D, W_RF = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
-                W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
-                W_D_tmp.append(W_D)
-                W_RF_tmp.append(W_RF)
+                WW_D, WW_RF = self.activation_RX([W_D[:,i,:], W_RF[:,i,:]])  # batch, 1, K, ...
+                W_D_tmp.append(WW_D)
+                W_RF_tmp.append(WW_RF)
+                i = i + 1
 
             V_D = tf.stack(V_D_tmp, axis=1)  # [should stack on axis ns]
             V_RF = tf.stack(V_RF_tmp, axis=1)  # [should stack on axis ns]
             W_D = tf.stack(W_D_tmp, axis=1)  # [should stack on axis ns]
             W_RF = tf.stack(W_RF_tmp, axis=1)  # [should stack on axis ns]
-            Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask=the_mask_of_ns, axis=1)
-            Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask=the_mask_of_ns, axis=1)
 
-            inputs2 = [V_D, W_D, H_complex, V_RF, W_RF, Lambda_B_sampled, Lambda_U_sampled]
+            inputs2 = [V_D, W_D, H_complex, V_RF, W_RF, Lambda_B, Lambda_U]
             d_loss, _, _, _ = self.loss(inputs2)
             loss_metric_test.update_state(d_loss)
 
@@ -314,30 +286,29 @@ class ML_model_class(tf.keras.Model):
             V_RF_tmp_ = []
             W_D_tmp_ = []
             W_RF_tmp_ = []
-            # for ns in range(self.Nsymb): # todo: return to this when done testing singleton ns set
-            for ns in selected_symbols:
-                the_mask_of_ns[ns]=1
-            #     V_D_, V_RF_ = self.CNN_transmitter([tf.squeeze(csi_tx)])
-                V_D_, V_RF_ = self.CNN_transmitter(tf.squeeze(csi_tx))
-                V_D_, V_RF_ = self.activation_TX([V_D_, V_RF_])  # batch, 1, K, ...
-                V_D_tmp_.append(V_D_)
-                V_RF_tmp_.append(V_RF_)
+            # selected_symbols = range(self.Nsymb)
+            csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
+            V_D_, V_RF_ = self.CNN_transmitter(csi_tx)
+            W_D_, W_RF_ = self.CNN_receiver(csi_rx)
 
-                # W_D_, W_RF_ = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D_, W_RF_ = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
-                W_D_, W_RF_ = self.activation_RX([W_D_, W_RF_])  # batch, 1, K, ...
-                W_D_tmp_.append(W_D_)
-                W_RF_tmp_.append(W_RF_)
+            i = 0
+            for ns in selected_symbols:
+                VV_D_, VV_RF_ = self.activation_TX([V_D_[:,i,:], V_RF_[:,i,:]])  # batch, 1, K, ...
+                V_D_tmp_.append(VV_D_)
+                V_RF_tmp_.append(VV_RF_)
+
+                WW_D_, WW_RF_ = self.activation_RX([W_D_[:,i,:], W_RF_[:,i,:]])  # batch, 1, K, ...
+                W_D_tmp_.append(WW_D_)
+                W_RF_tmp_.append(WW_RF_)
+                i = i + 1
 
             V_D_ = tf.stack(V_D_tmp_, axis=1)  # batch, Nsymb, K, ... [should stack on axis ns]
             V_RF_ = tf.stack(V_RF_tmp_, axis=1)  # batch, Nsymb, ... [should stack on axis ns]
             W_D_ = tf.stack(W_D_tmp_, axis=1)  # batch, Nsymb, K, ... [should stack on axis ns]
             W_RF_ = tf.stack(W_RF_tmp_, axis=1)  # batch, Nsymb, ... [should stack on axis ns]
-            Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask=the_mask_of_ns, axis=1)
-            Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask=the_mask_of_ns, axis=1)
 
             capacity_value, _, _, _ = self.metric_capacity_in_presence_of_phase_noise(
-                [V_D_, W_D_, H_complex, V_RF_, W_RF_, Lambda_B_sampled, Lambda_U_sampled])
+                [V_D_, W_D_, H_complex, V_RF_, W_RF_, Lambda_B, Lambda_U])
             capacity_metric_test.update_state(capacity_value)
             return {"neg_capacity_test_loss": loss_metric_test.result(),
                     'neg_capacity_performance_metric': capacity_metric_test.result()}
@@ -358,7 +329,9 @@ class ML_model_class(tf.keras.Model):
         # HH_tilde_0_cplx = []
         # LLambda_B = []
         # LLambda_U = []
-        selected_symbols = [0]
+        selected_symbols = range(self.Nsymb)
+        # rand_start = np.random.random_integers(low=0, high=self.Nsymb - self.number_of_OFDM_symbols_considered)
+        # selected_symbols = range(rand_start, rand_start + self.number_of_OFDM_symbols_considered)
 
         N_of_batches_in_DS = round(self.eval_dataset_size / self.BATCHSIZE)
         for batch_number in range(N_of_batches_in_DS):
@@ -366,36 +339,31 @@ class ML_model_class(tf.keras.Model):
                 obj_dataset_1.data_generator_for_evaluation_of_proposed_beamformer(batch_number)
 
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
-
+            V_D, V_RF = self.CNN_transmitter(csi_tx)  # batch, Nsymb, K, ... [only at ns=0]
+            W_D, W_RF = self.CNN_receiver(csi_rx)
             V_D_tmp = []
             V_RF_tmp = []
             W_D_tmp = []
             W_RF_tmp = []
-            the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
-            # for ns in range(self.Nsymb):
+            i = 0
             for ns in selected_symbols:
-                the_mask_of_ns[ns] = 1
-                # V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx)])  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.CNN_transmitter(tf.squeeze(csi_tx))  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.activation_TX([V_D, V_RF])
-                V_D_tmp.append(V_D)
-                V_RF_tmp.append(V_RF)
+                VV_D, VV_RF = self.activation_TX([V_D[:,i,:], V_RF[:,i,:]])
+                V_D_tmp.append(VV_D)
+                V_RF_tmp.append(VV_RF)
 
-                # W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D, W_RF = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
-                W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
-                W_D_tmp.append(W_D)
-                W_RF_tmp.append(W_RF)
+
+                WW_D, WW_RF = self.activation_RX([W_D[:,i,:], W_RF[:,i,:]])  # batch, 1, K, ...
+                W_D_tmp.append(WW_D)
+                W_RF_tmp.append(WW_RF)
+                i = i + 1
 
             V_D = tf.stack(V_D_tmp, axis=1)  # batch, Nsymb, K, ... [should stack on axis ns]
             V_RF = tf.stack(V_RF_tmp, axis=1)  # batch, Nsymb, ... [should stack on axis ns]
 
             W_D = tf.stack(W_D_tmp, axis=1)  # batch, Nsymb, K, ... [should stack on axis ns]
             W_RF = tf.stack(W_RF_tmp, axis=1)  # batch, Nsymb, ... [should stack on axis ns]
-            Lambda_B_sampled = tf.boolean_mask(Lambda_B, mask=the_mask_of_ns, axis=1)
-            Lambda_U_sampled = tf.boolean_mask(Lambda_U, mask=the_mask_of_ns, axis=1)
             T = self.metric_capacity_in_presence_of_phase_noise(
-                [V_D, W_D, H_complex, V_RF, W_RF, Lambda_B_sampled, Lambda_U_sampled])
+                [V_D, W_D, H_complex, V_RF, W_RF, Lambda_B, Lambda_U])
             C_mean = C_mean + T[0] / N_of_batches_in_DS
 
             if (batch_number == 0):

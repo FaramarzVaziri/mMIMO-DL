@@ -75,7 +75,7 @@ class ML_model_class(tf.keras.Model):
 
         # the following line produces the interleaved measured fresh H_tilde_ns for some k and old H_tilde_0 for the rest of the k
         uu= tf.tile(tf.expand_dims(H_tilde_non_ptrs[:, 0, :, :, :, :], axis=1),
-                                                                            multiples=[1, self.Nsymb, 1, 1, 1, 1])
+                    multiples=[1, self.Nsymb, 1, 1, 1, 1])
         H_tilde_ptrs_and_non_ptrs_stacked = tf.concat([H_tilde_ptrs, uu], axis=2)
         csi_rx = H_tilde_ptrs_and_non_ptrs_stacked# tf.reshape(H_tilde_ptrs_and_non_ptrs_stacked,
                             # [self.BATCHSIZE, self.Nsymb, self.K, self.N_u_a, self.N_b_a, 2])
@@ -95,10 +95,9 @@ class ML_model_class(tf.keras.Model):
                 W_D_tmp = []
                 W_RF_tmp = []
 
-                selected_symbols = [0]
-                # selected_symbols = np.random.choice(self.Nsymb,
-                #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-                #                                     replace=False)
+                selected_symbols = np.random.choice(self.Nsymb,
+                                                    round(self.sampling_ratio_time_domain_keep * self.Nsymb),
+                                                    replace=False)
 
                 # rand_start = np.random.random_integers(low= 0, high= round(1/self.sampling_ratio_time_domain_keep))
                 # selected_symbols = range(0 + rand_start, self.Nsymb + rand_start - round(1/self.sampling_ratio_time_domain_keep)+1,
@@ -107,14 +106,14 @@ class ML_model_class(tf.keras.Model):
                 the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
                 for ns in selected_symbols:
                     the_mask_of_ns[ns] = 1
-                    # V_D, V_RF = self.CNN_transmitter([tf.squeeze(H_tilde[:, 0, :, :, :, :])])
-                    V_D, V_RF = self.CNN_transmitter(tf.squeeze(H_tilde[:, 0, :, :, :, :]))
+                    V_D, V_RF = self.CNN_transmitter([tf.squeeze(H_tilde[:, 0, :, :, :, :]),
+                                                      tf.squeeze(set_of_ns[:, ns])])
                     V_D, V_RF = self.activation_TX([V_D, V_RF])
                     V_D_tmp.append(V_D)
                     V_RF_tmp.append(V_RF)
 
-                    # W_D, W_RF = self.CNN_receiver([tf.squeeze(H_tilde[:, 0, :, :, :, :])])
-                    W_D, W_RF = self.CNN_receiver(tf.squeeze(H_tilde[:, 0, :, :, :, :]))
+                    W_D, W_RF = self.CNN_receiver([tf.squeeze(H_tilde[:, 0, :, :, :, :]),
+                                                      tf.squeeze(set_of_ns[:, ns])])
                     W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
                     W_D_tmp.append(W_D)
                     W_RF_tmp.append(W_RF)
@@ -144,10 +143,9 @@ class ML_model_class(tf.keras.Model):
                 W_D_tmp = []
                 W_RF_tmp = []
 
-                selected_symbols = [0]
-                # selected_symbols = np.random.choice(self.Nsymb,
-                #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-                #                                     replace=False)
+                selected_symbols = np.random.choice(self.Nsymb,
+                                                    round(self.sampling_ratio_time_domain_keep * self.Nsymb),
+                                                    replace=False)
                 # rand_start = np.random.random_integers(low=0, high=round(1 / self.sampling_ratio_time_domain_keep))
                 # selected_symbols = range(0 + rand_start,
                 #                          self.Nsymb + rand_start - round(1 / self.sampling_ratio_time_domain_keep)+1,
@@ -156,15 +154,14 @@ class ML_model_class(tf.keras.Model):
                 the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
                 for ns in selected_symbols:
                     the_mask_of_ns[ns] = 1
-                    # V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx)])
-
-                    V_D, V_RF = self.CNN_transmitter(tf.squeeze(csi_tx))
+                    V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx),
+                                                      tf.squeeze(set_of_ns[:, ns])])
                     V_D, V_RF = self.activation_TX([V_D, V_RF])
                     V_D_tmp.append(V_D)
                     V_RF_tmp.append(V_RF)
 
-                    # W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                    W_D, W_RF = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
+                    W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :]),
+                                                      tf.squeeze(set_of_ns[:, ns])])
                     W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
                     W_D_tmp.append(W_D)
                     W_RF_tmp.append(W_RF)
@@ -195,10 +192,9 @@ class ML_model_class(tf.keras.Model):
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
 
-            selected_symbols = [0]
-            # selected_symbols = np.random.choice(self.Nsymb,
-            #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-            #                                     replace=False)
+            selected_symbols = np.random.choice(self.Nsymb,
+                                                round(self.sampling_ratio_time_domain_keep * self.Nsymb),
+                                                replace=False)
             # rand_start = np.random.random_integers(low=0, high=round(1 / self.sampling_ratio_time_domain_keep))
             # selected_symbols = range(0 + rand_start,
             #                          self.Nsymb + rand_start - round(1 / self.sampling_ratio_time_domain_keep)+1,
@@ -211,14 +207,14 @@ class ML_model_class(tf.keras.Model):
             the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
             for ns in selected_symbols:
                 the_mask_of_ns[ns] = 1
-                # V_D, V_RF = self.CNN_transmitter([tf.squeeze(H_tilde[:, 0, :, :, :, :])])  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.CNN_transmitter(tf.squeeze(H_tilde[:, 0, :, :, :, :]))  # batch, Nsymb, K, ... [only at ns=0]
+                V_D, V_RF = self.CNN_transmitter([tf.squeeze(H_tilde[:, 0, :, :, :, :]),
+                                                  tf.squeeze(set_of_ns[:, ns])])  # batch, Nsymb, K, ... [only at ns=0]
                 V_D, V_RF = self.activation_TX([V_D, V_RF])
                 V_D_tmp.append(V_D)
                 V_RF_tmp.append(V_RF)
 
-                # W_D, W_RF = self.CNN_receiver([tf.squeeze(H_tilde[:, 0, :, :, :, :])])
-                W_D, W_RF = self.CNN_receiver(tf.squeeze(H_tilde[:, 0, :, :, :, :]))
+                W_D, W_RF = self.CNN_receiver([tf.squeeze(H_tilde[:, 0, :, :, :, :]),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
                 W_D_tmp.append(W_D)
                 W_RF_tmp.append(W_RF)
@@ -239,17 +235,16 @@ class ML_model_class(tf.keras.Model):
             W_D_tmp_ = []
             W_RF_tmp_ = []
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
-            # for ns in range(self.Nsymb): # todo: return to this when done testing singleton ns set
-            for ns in selected_symbols: # todo: return to this when done testing singleton ns set
+            for ns in range(self.Nsymb): # todo: return to this when done testing singleton ns set
                 the_mask_of_ns[ns] = 1
-            # V_D_, V_RF_ = self.CNN_transmitter([tf.squeeze(csi_tx)])
-                V_D_, V_RF_ = self.CNN_transmitter(tf.squeeze(csi_tx))
+                V_D_, V_RF_ = self.CNN_transmitter([tf.squeeze(csi_tx),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 V_D_, V_RF_ = self.activation_TX([V_D_, V_RF_])  # batch, 1, K, ...
                 V_D_tmp_.append(V_D_)
                 V_RF_tmp_.append(V_RF_)
 
-                # W_D_, W_RF_ = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D_, W_RF_ = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
+                W_D_, W_RF_ = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :]),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 W_D_, W_RF_ = self.activation_RX([W_D_, W_RF_])  # batch, 1, K, ...
                 W_D_tmp_.append(W_D_)
                 W_RF_tmp_.append(W_RF_)
@@ -270,10 +265,9 @@ class ML_model_class(tf.keras.Model):
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
-            selected_symbols = [0]
-            # selected_symbols = np.random.choice(self.Nsymb,
-            #                                         round(self.sampling_ratio_time_domain_keep * self.Nsymb),
-            #                                         replace=False)
+            selected_symbols = np.random.choice(self.Nsymb,
+                                                    round(self.sampling_ratio_time_domain_keep * self.Nsymb),
+                                                    replace=False)
             # rand_start = np.random.random_integers(low=0, high=round(1 / self.sampling_ratio_time_domain_keep))
             # selected_symbols = range(0 + rand_start,
             #                          self.Nsymb + rand_start - round(1 / self.sampling_ratio_time_domain_keep)+1,
@@ -286,14 +280,14 @@ class ML_model_class(tf.keras.Model):
             the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
             for ns in selected_symbols:
                 the_mask_of_ns[ns] = 1
-                # V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx)])  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.CNN_transmitter(tf.squeeze(csi_tx))  # batch, Nsymb, K, ... [only at ns=0]
+                V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx),
+                                                  tf.squeeze(set_of_ns[:, ns])])  # batch, Nsymb, K, ... [only at ns=0]
                 V_D, V_RF = self.activation_TX([V_D, V_RF])
                 V_D_tmp.append(V_D)
                 V_RF_tmp.append(V_RF)
 
-                # W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D, W_RF = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
+                W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :]),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
                 W_D_tmp.append(W_D)
                 W_RF_tmp.append(W_RF)
@@ -314,17 +308,16 @@ class ML_model_class(tf.keras.Model):
             V_RF_tmp_ = []
             W_D_tmp_ = []
             W_RF_tmp_ = []
-            # for ns in range(self.Nsymb): # todo: return to this when done testing singleton ns set
-            for ns in selected_symbols:
+            for ns in range(self.Nsymb): # todo: return to this when done testing singleton ns set
                 the_mask_of_ns[ns]=1
-            #     V_D_, V_RF_ = self.CNN_transmitter([tf.squeeze(csi_tx)])
-                V_D_, V_RF_ = self.CNN_transmitter(tf.squeeze(csi_tx))
+                V_D_, V_RF_ = self.CNN_transmitter([tf.squeeze(csi_tx),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 V_D_, V_RF_ = self.activation_TX([V_D_, V_RF_])  # batch, 1, K, ...
                 V_D_tmp_.append(V_D_)
                 V_RF_tmp_.append(V_RF_)
 
-                # W_D_, W_RF_ = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D_, W_RF_ = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
+                W_D_, W_RF_ = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :]),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 W_D_, W_RF_ = self.activation_RX([W_D_, W_RF_])  # batch, 1, K, ...
                 W_D_tmp_.append(W_D_)
                 W_RF_tmp_.append(W_RF_)
@@ -358,7 +351,6 @@ class ML_model_class(tf.keras.Model):
         # HH_tilde_0_cplx = []
         # LLambda_B = []
         # LLambda_U = []
-        selected_symbols = [0]
 
         N_of_batches_in_DS = round(self.eval_dataset_size / self.BATCHSIZE)
         for batch_number in range(N_of_batches_in_DS):
@@ -372,17 +364,16 @@ class ML_model_class(tf.keras.Model):
             W_D_tmp = []
             W_RF_tmp = []
             the_mask_of_ns = np.zeros(shape=self.Nsymb, dtype=np.int32)
-            # for ns in range(self.Nsymb):
-            for ns in selected_symbols:
+            for ns in range(self.Nsymb):
                 the_mask_of_ns[ns] = 1
-                # V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx)])  # batch, Nsymb, K, ... [only at ns=0]
-                V_D, V_RF = self.CNN_transmitter(tf.squeeze(csi_tx))  # batch, Nsymb, K, ... [only at ns=0]
+                V_D, V_RF = self.CNN_transmitter([tf.squeeze(csi_tx),
+                                                  tf.squeeze(set_of_ns[:, ns])])  # batch, Nsymb, K, ... [only at ns=0]
                 V_D, V_RF = self.activation_TX([V_D, V_RF])
                 V_D_tmp.append(V_D)
                 V_RF_tmp.append(V_RF)
 
-                # W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :])])
-                W_D, W_RF = self.CNN_receiver(tf.squeeze(csi_rx[:, ns, :, :, :, :]))
+                W_D, W_RF = self.CNN_receiver([tf.squeeze(csi_rx[:, ns, :, :, :, :]),
+                                                  tf.squeeze(set_of_ns[:, ns])])
                 W_D, W_RF = self.activation_RX([W_D, W_RF])  # batch, 1, K, ...
                 W_D_tmp.append(W_D)
                 W_RF_tmp.append(W_RF)
