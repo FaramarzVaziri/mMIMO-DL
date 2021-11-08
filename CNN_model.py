@@ -409,12 +409,11 @@ class Specialized_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
 
         vd = self.ID_block_V_D_branch_layer_7(vd)
         vd = self.ID_block_V_D_branch_layer_8(vd)
-        vd = self.ID_block_V_D_branch_layer_9(vd)
-        vd = self.ID_block_V_D_branch_layer_10(vd)
-        vd = self.ID_block_V_D_branch_layer_11(vd)
-        vd = self.ID_block_V_D_branch_layer_12(vd)
+        # vd = self.ID_block_V_D_branch_layer_9(vd)
+        # vd = self.ID_block_V_D_branch_layer_10(vd)
+        # vd = self.ID_block_V_D_branch_layer_11(vd)
+        # vd = self.ID_block_V_D_branch_layer_12(vd)
         vd = self.ID_block_V_D_branch_layer_13(vd)
-
         vd = self.MP_V_D_branch_end(vd)
         vd_end = self.reshaper_V_D(vd)
 
@@ -422,10 +421,10 @@ class Specialized_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
 
         vrf = self.ID_block_V_RF_branch_layer_7(vrf)
         vrf = self.ID_block_V_RF_branch_layer_8(vrf)
-        vrf = self.ID_block_V_RF_branch_layer_9(vrf)
-        vrf = self.ID_block_V_RF_branch_layer_10(vrf)
-        vrf = self.ID_block_V_RF_branch_layer_11(vrf)
-        vrf = self.ID_block_V_RF_branch_layer_12(vrf)
+        # vrf = self.ID_block_V_RF_branch_layer_9(vrf)
+        # vrf = self.ID_block_V_RF_branch_layer_10(vrf)
+        # vrf = self.ID_block_V_RF_branch_layer_11(vrf)
+        # vrf = self.ID_block_V_RF_branch_layer_12(vrf)
         vrf = self.ID_block_V_RF_branch_layer_13(vrf)
         vrf_end = self.MP_V_RF_branch_end(vrf)
 

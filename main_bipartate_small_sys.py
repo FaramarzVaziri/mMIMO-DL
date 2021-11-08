@@ -59,12 +59,12 @@ if __name__ == '__main__':
     val_freq_post = 1
 
     # pre
-    do_pre_train = 'yes'
-    save_pre = 'yes'
-    evaluate_pre = 'yes'
+    do_pre_train = 'no'
+    save_pre = 'no'
+    evaluate_pre = 'no'
 
     # post
-    load_trained_best_model = 'no'
+    load_trained_best_model = 'yes'
     do_post_train = 'yes'
     save_post = 'yes'
     evaluate_post = 'yes'
@@ -75,16 +75,16 @@ if __name__ == '__main__':
     record_metadata = 'yes'
 
     # ML Setup /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240
+    train_dataset_size = 102400
     train_data_fragment_size = train_dataset_size
-    train_dataset_size_post = 10240
+    train_dataset_size_post = 102400
     train_data_fragment_size_post = train_dataset_size_post
     test_dataset_size = 128
     test_data_fragment_size = test_dataset_size
     eval_dataset_size = 128
     eval_data_fragment_size = eval_dataset_size
     BATCHSIZE = 128
-    L_rate = 1e-4
+    L_rate = 1e-5
     dropout_rate = 0.0
 
     # DNN setting
