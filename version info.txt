@@ -1,0 +1,53 @@
+Nov-16
+
+Only the code main_ns_as_input_large_sys.py works
+The reason that other codes wont work is that I changed a couple of functions including ML_model, loss_phase_noised 
+I made the capacity metric calculation lighter by reducing the Nsymb to only 5 samples and it required to change the following lines in loss_phase_noised as follows:
+
+from
+
+
+if (self.mode == 'train') or (self.mode == 'test'):
+        H = tf.tile([H], multiples=[round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1])
+else:
+		H = tf.tile([H], multiples=[self.Nsymb, 1, 1, 1])
+		
+to
+
+
+# if (self.mode == 'train') or (self.mode == 'test'):
+        H = tf.tile([H], multiples=[round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1])
+        # else:
+        #     H = tf.tile([H], multiples=[self.Nsymb, 1, 1, 1])
+
+
+
+
+Moreover, in the main I added a new var named sampling_ratio_time_domain_keep_capacity_metric which is much smaller than 50
+I also added it as a new input to the ML_model class and use it for test_step for capacity calculation as follows:
+This happened for both phase_noised and phase noise free parts of the test_step.py
+
+From:
+
+# capacity metric
+            
+            V_D_tmp_ = []
+            V_RF_tmp_ = []
+            W_D_tmp_ = []
+            W_RF_tmp_ = []
+            csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
+            for ns in range(self.Nsymb):
+
+
+To:
+
+
+# capacity metric
+            selected_symbols_capacity_metric = range(0, self.Nsymb - round(1 / self.sampling_ratio_time_domain_keep_capacity_metric) + 1,
+                                     round(1 / self.sampling_ratio_time_domain_keep_capacity_metric))
+            V_D_tmp_ = []
+            V_RF_tmp_ = []
+            W_D_tmp_ = []
+            W_RF_tmp_ = []
+            csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
+            for ns in selected_symbols_capacity_metric:

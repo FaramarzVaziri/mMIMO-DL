@@ -6,10 +6,8 @@ import time
 import scipy.io as sio
 import tensorflow as tf
 import numpy as np
+# import tensorboard
 import os
-
-
-# Clear any logs from previous runs
 
 
 try:
@@ -29,11 +27,11 @@ except ValueError:
 
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
-from CNN_bipartite import ResNet_model_class # this is the best currently, it has repetitions and no shortcut
-from ML_model import ML_model_class
+from CNN_ns_as_input_concat_one_hot import ResNet_model_class # this is the best currently, it has repetitions and no shortcut
+from ML_model_ns_as_input import ML_model_class
 from dataset_generator import dataset_generator_class
 from loss_phase_noise_free import loss_phase_noise_free_class
-from loss_phase_noised_single_ns import loss_phase_noised_class
+from loss_phase_noised_multi_ns import loss_phase_noised_class
 
 
 def training_metadata_writer(file_name, training_metadata):
@@ -50,43 +48,45 @@ def training_metadata_writer(file_name, training_metadata):
 
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
+    trainable_csi= True
+    trainable_ns= True
     generic_part_trainable = True
     specialized_part_trainable = True
     impl = 'map_fn'
     impl_phn_free = 'map_fn'
 
-    epochs_pre = 10
+    epochs_pre = 30
     epochs_post = 10
     val_freq_pre = 1
     val_freq_post = 1
 
     # pre
-    do_pre_train = 'no'
-    save_pre = 'no'
+    do_pre_train = 'yes'
+    save_pre = 'yes'
     evaluate_pre = 'no'
 
     # post
-    load_trained_best_model = 'yes'
-    do_post_train = 'yes'
-    save_post = 'yes'
-    evaluate_post = 'yes'
-
+    load_trained_best_model = 'no'
+    do_post_train = 'no'
+    save_post = 'no'
+    evaluate_post = 'no'
+    gather_data_for_runnig_Sohrabis_beamformer = 'no'
     evaluate_sohrabi = 'no'
     # KPIs
     record_loss = 'yes'
     record_metadata = 'yes'
 
     # ML Setup /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240
-    train_data_fragment_size = 1024
-    train_dataset_size_post = 10240
-    train_data_fragment_size_post = 1024
+    train_dataset_size = 128
+    train_data_fragment_size = 128
+    train_dataset_size_post = 128
+    train_data_fragment_size_post = 128
     test_dataset_size = 128
     test_data_fragment_size = test_dataset_size
     eval_dataset_size = 128
     eval_data_fragment_size = eval_dataset_size
-    BATCHSIZE = 16
-    L_rate = 1e-6
+    BATCHSIZE = 4
+    L_rate_initial = 5e-6
     dropout_rate = 0.0
 
     # DNN setting
@@ -99,10 +99,10 @@ if __name__ == '__main__':
     N_u_a_strides = 2
 
     # MIMO-OFDM setup //////////////////////////////////////////////////////////////////////////////////////////////////
-    N_b_a = 16
+    N_b_a = 32
     N_b_rf = 8
     N_b_o = N_b_rf
-    N_u_a = 16
+    N_u_a = 32
     N_u_rf = 8
     N_u_o = N_u_rf
     N_s = 4
@@ -129,32 +129,34 @@ if __name__ == '__main__':
     L = -85.
     fs = 32.72e6
     Ts = 1. / fs
+    # tensorboard_log_frequency = 10
 
     phase_noise_power_augmentation_factor = np.sqrt(1.)
     PHN_innovation_std = np.sqrt(1024/K)*np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
     print('-- PHN_innovation_std = ', PHN_innovation_std)
 
-    dataset_name = 'Dataset_samps102400_K32_Na16_rf8/DS1.mat'
+    dataset_name = 'Dataset_samps128_K32_Na32/DS1.mat'
     dataset_for_testing_sohrabi = 'DS_for_py_for_testing_Sohrabi.mat'
 
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 4 / K
     sampling_ratio_time_domain_keep = 1 / Nsymb
-    sampling_ratio_subcarrier_domain_keep = 4 / K
+    sampling_ratio_time_domain_keep_capacity_metric = 5 / Nsymb
+    sampling_ratio_subcarrier_domain_keep = 10 / K
 
     print('-- Parameter initialization is done.')
 
     obj_dataset_train = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                 angular_spread_rad, wavelength, d, BATCHSIZE,
                                                 phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
-                                                c, PHN_innovation_std*phase_noise_power_augmentation_factor, dataset_name, train_dataset_size, train_data_fragment_size, 'train', 'no')
+                                                c, PHN_innovation_std*phase_noise_power_augmentation_factor, dataset_name, train_dataset_size, train_data_fragment_size, 'train', 'no',dataset_for_testing_sohrabi)
     the_dataset_train = obj_dataset_train.dataset_generator()
     print('-- cardinality of the train DS: ', tf.data.experimental.cardinality(the_dataset_train))
     obj_dataset_test = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                angular_spread_rad, wavelength, d, BATCHSIZE,
                                                phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
-                                               c, PHN_innovation_std, dataset_name, test_dataset_size, test_data_fragment_size, 'test', '-')
+                                               c, PHN_innovation_std, dataset_name, test_dataset_size, test_data_fragment_size, 'test', '-',dataset_for_testing_sohrabi)
     the_dataset_test = obj_dataset_test.dataset_generator()
     print('-- Dataset creation is done.')
 
@@ -162,12 +164,13 @@ if __name__ == '__main__':
                                               wavelength, d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep,
                                               Nsymb, Ts, fc, c, dataset_name, train_dataset_size, dropout_rate,
                                               convolutional_kernels, convolutional_filters, convolutional_strides, convolutional_dilation,
-                                              subcarrier_strides, N_b_a_strides, N_u_a_strides,
-                                              generic_part_trainable, specialized_part_trainable)
-    the_model_tx = obj_neural_net_model.resnet_4_large_MIMOFDM(layer_name = 'TX')
-    print('-- TX resnet model is created')
-    the_model_rx = obj_neural_net_model.resnet_4_large_MIMOFDM(layer_name = 'RX')
+                                              subcarrier_strides, N_u_a_strides, N_b_a_strides)
 
+    the_model_tx = obj_neural_net_model.resnet_function_transceiver_large_sys(trainable_csi, trainable_ns,
+                                                                              layer_name='TX')
+    print('-- TX resnet model is created')
+    the_model_rx = obj_neural_net_model.resnet_function_transceiver_large_sys(trainable_csi, trainable_ns,
+                                                                              layer_name='RX')
     print('-- RX resnet model is created')
 
     obj_loss_phase_noise_free_class = loss_phase_noise_free_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
@@ -179,18 +182,25 @@ if __name__ == '__main__':
     print('-- phase noise free loss function created')
 
     obj_capacity_metric = loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                                                  d, BATCHSIZE, 1, Nsymb, 1, 1, 'eval', impl)
+                                                  d, BATCHSIZE, truncation_ratio_keep, Nsymb, sampling_ratio_time_domain_keep_capacity_metric,
+                                                  sampling_ratio_subcarrier_domain_keep, 'eval', impl, sampling_ratio_time_domain_keep_capacity_metric)
     capacity_metric = obj_capacity_metric.capacity_forall_samples
     print('-- capacity metric with phase noise is created')
 
 
     obj_ML_model_pre_training = ML_model_class(the_model_tx, the_model_rx, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, SNR, P, N_c,
                                                N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE,
-                                               phase_shift_stddiv, truncation_ratio_keep, sampling_ratio_time_domain_keep, Nsymb, Ts, fc, c,
+                                               phase_shift_stddiv, truncation_ratio_keep, sampling_ratio_time_domain_keep,
+                                               sampling_ratio_time_domain_keep_capacity_metric, Nsymb, Ts, fc, c,
                                                PHN_innovation_std, dataset_name, eval_dataset_size, 'train', False)
 
-    gradient_norm_clipper = 1.
-    optimizer_1 = tf.keras.optimizers.Adam(learning_rate= L_rate)#, clipnorm = gradient_norm_clipper)
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        L_rate_initial,
+        decay_steps=round(train_dataset_size / BATCHSIZE),  # one epoch
+        decay_rate=0.8,
+        staircase=False)
+    optimizer_1 = tf.keras.optimizers.Adam(learning_rate= L_rate_initial)  # , clipnorm = gradient_norm_clipper)
+
     # tx
     tf.keras.utils.plot_model(the_model_tx, show_shapes=True, show_layer_names=True, to_file='cnn_tx.png')
     the_model_tx.summary()
@@ -216,15 +226,15 @@ if __name__ == '__main__':
           'BATCHSIZE=', BATCHSIZE,
           'n_layers_tx', n_layers_tx,
           'n_layers_rx', n_layers_rx,
-          ' L_rate=', L_rate,
+          ' L_rate=', L_rate_initial,
           'convolutional_filters', convolutional_filters,
           'convolutional_kernels', convolutional_kernels)
 
     print('-- ML model is created')
 
-    ReduceLROnPlateau_decay_rate = 0.5
-    ReduceLROnPlateau_patience = 5
-    ReduceLROnPlateau_min_lr = 1e-6
+    ReduceLROnPlateau_decay_rate = 0.1
+    ReduceLROnPlateau_patience = 1
+    ReduceLROnPlateau_min_lr = 1e-8
     reduce_lr_pre = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss',
                                                      factor= ReduceLROnPlateau_decay_rate, patience= ReduceLROnPlateau_patience, min_lr= ReduceLROnPlateau_min_lr,
                                                      mode='min', verbose=1)
@@ -236,6 +246,9 @@ if __name__ == '__main__':
     #     save_weights_only=True, mode='min', save_freq='epoch',
     #     options=None
     # )
+    # log_dir = "/content/gdrive/MyDrive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/logs/fit/" + \
+    #           datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir) # , profile_batch=2
 
 
     if (load_trained_best_model == 'yes'):
@@ -288,6 +301,20 @@ if __name__ == '__main__':
     # ==================================================================================================================
     # ==================================================================================================================
     # ==================================================================================================================
+    if (gather_data_for_runnig_Sohrabis_beamformer == 'yes'):
+        temp = obj_dataset_test.data_generator_for_running_Sohrabis_beamformer(eval_dataset_size = test_dataset_size)
+
+        HHH_complex = tf.concat(temp[0], axis=0).numpy()
+        HHH_tilde_0 = tf.concat(temp[1], axis=0).numpy()
+        LLLambda_B = tf.concat(temp[2], axis=0).numpy()
+        LLLambda_U = tf.concat(temp[3], axis=0).numpy()
+
+        mdic = {"H": HHH_complex,
+                "H_tilde_0": HHH_tilde_0,
+                'Lambda_B': LLLambda_B,
+                'Lambda_U': LLLambda_U}
+        sio.savemat("data_set_for_matlab_large_sys.mat", mdic)
+
     if (evaluate_sohrabi == 'yes'):
         print('-- Evaluation of Sohrabis method has started')
         start_time_3 = time.time()
@@ -320,7 +347,7 @@ if __name__ == '__main__':
     obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                 angular_spread_rad, wavelength, d, BATCHSIZE,
                                                 phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
-                                                c, phase_noise_power_augmentation_factor*PHN_innovation_std, dataset_name, train_dataset_size_post, train_data_fragment_size_post, 'train', 'yes')
+                                                c, phase_noise_power_augmentation_factor*PHN_innovation_std, dataset_name, train_dataset_size_post, train_data_fragment_size_post, 'train', 'yes',dataset_for_testing_sohrabi)
     the_dataset_train_phn = obj_dataset_train_phn.dataset_generator()
 
     print('-- phase-noised Dataset is created.')
@@ -329,7 +356,7 @@ if __name__ == '__main__':
                                                            N_scatterers, angular_spread_rad, wavelength,
                                                            d, BATCHSIZE, truncation_ratio_keep, Nsymb,
                                                            sampling_ratio_time_domain_keep,
-                                                           sampling_ratio_subcarrier_domain_keep, 'train', impl)
+                                                           sampling_ratio_subcarrier_domain_keep, 'train', impl, sampling_ratio_time_domain_keep_capacity_metric)
 
     the_loss_function_phn_approx = obj_loss_phase_noised_approx.capacity_forall_samples
     print('-- phase noised loss is created')
@@ -338,20 +365,24 @@ if __name__ == '__main__':
     obj_ML_model_post_training = ML_model_class(the_model_tx, the_model_rx, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
                                                PTRS_seperation, SNR, P, N_c,
                                                N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE,
-                                               phase_shift_stddiv, truncation_ratio_keep, sampling_ratio_time_domain_keep, Nsymb, Ts, fc, c,
+                                               phase_shift_stddiv, truncation_ratio_keep, sampling_ratio_time_domain_keep,
+                                                sampling_ratio_time_domain_keep_capacity_metric, Nsymb, Ts, fc, c,
                                                PHN_innovation_std, dataset_name, eval_dataset_size, 'train', True)
 
 
     print('-- Transfer weights and biases is done')
-
-    optimizer_2 = tf.keras.optimizers.Adam(learning_rate = L_rate, clipnorm = gradient_norm_clipper)
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        L_rate_initial,
+        decay_steps=round(train_dataset_size / BATCHSIZE),  # one epoch
+        decay_rate=0.8,
+        staircase=False)
+    optimizer_2 = tf.keras.optimizers.Adam(learning_rate=L_rate_initial)
     obj_ML_model_post_training.compile(
         optimizer=optimizer_2,
         loss=the_loss_function_phn_approx,
         activation_TX=obj_neural_net_model.custom_actication_transmitter,
         activation_RX=obj_neural_net_model.custom_actication_receiver,
         metric_capacity_in_presence_of_phase_noise=capacity_metric)
-
 
     print('-- compiling the new ML model with new optimizer and phase noised loss is done')
     reduce_lrTL = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss', factor= ReduceLROnPlateau_decay_rate,
@@ -364,6 +395,9 @@ if __name__ == '__main__':
     #     save_weights_only=True, mode='min', save_freq='epoch',
     #     options=None
     # )
+    # log_dir = "/content/gdrive/MyDrive/Main/Codes/ML_MIMO_new_project/PY_projects/convnet_transfer_learning_v1/logs/fit/" + \
+    #           datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir) # , profile_batch=2
 
     if (do_post_train == 'yes'):
         print('-- Training in presence of phase noise has started.')
@@ -405,7 +439,8 @@ if __name__ == '__main__':
         print('-- Evaluation of the proposed post-trained network has started')
         start_time_5 = time.time()
         obj_sequential_loss_phase_noised_class_accurate = loss_phase_noised_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
-                                                                                  d, BATCHSIZE, 1, Nsymb, 1, 1, 'eval', impl)
+                                                                                  d, BATCHSIZE, truncation_ratio_keep, Nsymb, sampling_ratio_time_domain_keep_capacity_metric,
+                                                                                  sampling_ratio_subcarrier_domain_keep, 'eval', impl, sampling_ratio_time_domain_keep_capacity_metric)
         the_loss_function_phn_accurate = obj_sequential_loss_phase_noised_class_accurate.capacity_forall_samples
 
         C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples\
@@ -434,7 +469,6 @@ if __name__ == '__main__':
             [train_dataset_size,
              train_dataset_size_post,
              BATCHSIZE,
-             L_rate,
              convolutional_kernels,
              convolutional_filters,
              convolutional_strides,
