@@ -9,7 +9,7 @@ import numpy as np
 # https://research.fb.com/wp-content/uploads/2017/01/paper_expl_norm_on_deep_res_networks.pdf
 class IdentityBlock_v2_class(tf.keras.Model):  #
     def __init__(self, filters, kernel_size, strides, dilation, trainablity):
-        super(IdentityBlock_v2_class, self).__init__(name='')
+        super(IdentityBlock_v2_class, self).__init__()
         self.bn0 = BatchNormalization()
         self.conv1 = Conv3D(filters=filters,
                             kernel_size=kernel_size,
@@ -53,8 +53,8 @@ class IdentityBlock_v2_class(tf.keras.Model):  #
         return z
 
 class Generic_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
-    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation, trainablity):
-        super(Generic_2_ns_4_small_MIMOFDM_CNN_class, self).__init__(name='')
+    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation, trainablity, layer_name):
+        super(Generic_2_ns_4_small_MIMOFDM_CNN_class, self).__init__(name= layer_name)
 
         # common path
         self.ID_block_common_branch_layer_1 = IdentityBlock_v2_class(filters=convolutional_filters,
@@ -192,8 +192,9 @@ class Generic_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
 
 
 class Generic_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
-    def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation, trainablity, subcarrier_strides, N_u_a_strides, N_b_a_strides):
-        super(Generic_2_ns_4_large_MIMOFDM_CNN_class, self).__init__(name='')
+    def __init__(self, convolutional_filters, kernels,convolutional_strides,
+                 convolutional_dilation, trainablity, subcarrier_strides, N_u_a_strides, N_b_a_strides, layer_name):
+        super(Generic_2_ns_4_large_MIMOFDM_CNN_class, self).__init__(name= layer_name)
 
         # common path
 
@@ -292,11 +293,11 @@ class Generic_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
 
         x = self.ID_block_common_branch_layer_1(csi)
         x = self.MP_1(x)
-        x = self.MP_2(x)
+        # x = self.MP_2(x)
         x = self.ID_block_common_branch_layer_2(x)
-        x = self.MP_3(x)
+        # x = self.MP_3(x)
         x = self.ID_block_common_branch_layer_3(x)
-        x = self.MP_4(x)
+        # x = self.MP_4(x)
         x = self.ID_block_common_branch_layer_4(x)
         # x = self.ID_block_common_branch_layer_5(x)
         # x = self.ID_block_common_branch_layer_6(x)
@@ -324,8 +325,8 @@ class Generic_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
 
 class Specialized_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
     def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation,
-                 N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, trainablity):
-        super(Specialized_2_ns_4_small_MIMOFDM_CNN_class, self).__init__(name='')
+                 N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, trainablity, layer_name):
+        super(Specialized_2_ns_4_small_MIMOFDM_CNN_class, self).__init__(name= layer_name)
 
         # V_D path
         self.ID_block_V_D_branch_layer_7 = IdentityBlock_v2_class(filters=convolutional_filters,
@@ -430,11 +431,13 @@ class Specialized_2_ns_4_small_MIMOFDM_CNN_class(tf.keras.Model):  #
 
         return vd_end, vrf_end
 
+
+
 class Specialized_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
     def __init__(self, convolutional_filters, kernels,convolutional_strides, convolutional_dilation,
                  N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, trainablity,
-                 subcarrier_strides, N_u_a_strides, N_b_a_strides):
-        super(Specialized_2_ns_4_large_MIMOFDM_CNN_class, self).__init__(name='')
+                 subcarrier_strides, N_u_a_strides, N_b_a_strides, layer_name):
+        super(Specialized_2_ns_4_large_MIMOFDM_CNN_class, self).__init__(name= layer_name)
 
         # V_D path
         self.Tconv_V_D_1 = Conv3DTranspose(filters=convolutional_filters,
@@ -509,22 +512,22 @@ class Specialized_2_ns_4_large_MIMOFDM_CNN_class(tf.keras.Model):  #
 
     def call(self, vd, vrf):
         # V_D path
-        vd = self.Tconv_V_D_1(vd)
+        # vd = self.Tconv_V_D_1(vd)
         vd = self.ID_block_V_D_branch_layer_7(vd)
-        vd = self.Tconv_V_D_2(vd)
+        # vd = self.Tconv_V_D_2(vd)
         vd = self.ID_block_V_D_branch_layer_8(vd)
-        vd = self.Tconv_V_D_3(vd)
+        # vd = self.Tconv_V_D_3(vd)
         vd = self.ID_block_V_D_branch_layer_9(vd)
         vd = self.Tconv_V_D_4(vd)
         vd = self.MP_V_D_branch_end(vd)
         vd_end = self.reshaper_V_D(vd)
 
         # V_RF path
-        vrf = self.Tconv_V_RF_1(vrf)
+        # vrf = self.Tconv_V_RF_1(vrf)
         vrf = self.ID_block_V_RF_branch_layer_7(vrf)
-        vrf = self.Tconv_V_RF_2(vrf)
+        # vrf = self.Tconv_V_RF_2(vrf)
         vrf = self.ID_block_V_RF_branch_layer_8(vrf)
-        vrf = self.Tconv_V_RF_3(vrf)
+        # vrf = self.Tconv_V_RF_3(vrf)
         vrf = self.ID_block_V_RF_branch_layer_9(vrf)
         vrf = self.Tconv_V_RF_4(vrf)
         vrf_end = self.MP_V_RF_branch_end(vrf)
@@ -572,7 +575,7 @@ class ResNet_model_class():
         self.generic_part_trainable = generic_part_trainable
         self.specialized_part_trainable = specialized_part_trainable
 
-    def resnet_4_small_MIMOFDM_transmitter(self):
+    def resnet_4_small_MIMOFDM(self, layer_name):
         kernels = [min(self.K, self.convolutional_kernels),
                    min(self.N_u_a, self.convolutional_kernels),
                    min(self.N_b_a, self.convolutional_kernels)]
@@ -582,7 +585,8 @@ class ResNet_model_class():
                                                                   kernels=kernels,
                                                                   convolutional_strides=self.convolutional_strides,
                                                                   convolutional_dilation=self.convolutional_dilation,
-                                                                  trainablity=self.generic_part_trainable)
+                                                                  trainablity=self.generic_part_trainable,
+                                                                  layer_name = layer_name+'_generic')
         specialized_part_obj = Specialized_2_ns_4_small_MIMOFDM_CNN_class(
             convolutional_filters=self.convolutional_filters,
             kernels=kernels,
@@ -595,16 +599,16 @@ class ResNet_model_class():
             N_s=self.N_s,
             K=self.K,
             PTRS_seperation=self.PTRS_seperation,
-            trainablity=self.specialized_part_trainable)
+            trainablity=self.specialized_part_trainable,
+            layer_name = layer_name+'_specialized')
 
         # Models
         vd_generic, vrf_generic = generic_part_obj(csi)
         vd, vrf = specialized_part_obj(vd_generic, vrf_generic)
-        func_model = Model(inputs=[csi], outputs=[vd, vrf])
+        return Model(inputs=[csi], outputs=[vd, vrf])
 
-        return func_model
 
-    def resnet_4_large_MIMOFDM_transmitter(self):
+    def resnet_4_large_MIMOFDM(self, layer_name):
         kernels = [min(self.K, self.convolutional_kernels),
                    min(self.N_u_a, self.convolutional_kernels),
                    min(self.N_b_a, self.convolutional_kernels)]
@@ -614,10 +618,11 @@ class ResNet_model_class():
                                                                   kernels=kernels,
                                                                   convolutional_strides=self.convolutional_strides,
                                                                   convolutional_dilation=self.convolutional_dilation,
-                                                                  trainablity=True,
+                                                                  trainablity=self.generic_part_trainable,
                                                                   subcarrier_strides= self.subcarrier_strides,
                                                                   N_b_a_strides= self.N_b_a_strides,
-                                                                  N_u_a_strides=self.N_u_a_strides)
+                                                                  N_u_a_strides=self.N_u_a_strides,
+                                                                  layer_name = layer_name+'_generic')
         specialized_part_obj = Specialized_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
                                                                           kernels=kernels,
                                                                           convolutional_strides=self.convolutional_strides,
@@ -629,17 +634,16 @@ class ResNet_model_class():
                                                                           N_s=self.N_s,
                                                                           K=self.K,
                                                                           PTRS_seperation=self.PTRS_seperation,
-                                                                          trainablity=True,
+                                                                          trainablity=self.specialized_part_trainable,
                                                                           subcarrier_strides=self.subcarrier_strides,
                                                                           N_b_a_strides=self.N_b_a_strides,
-                                                                          N_u_a_strides=self.N_u_a_strides)
+                                                                          N_u_a_strides=self.N_u_a_strides,
+                                                                          layer_name = layer_name+'_specialized')
 
         # Models
         vd_generic, vrf_generic = generic_part_obj(csi)
         vd, vrf = specialized_part_obj(vd_generic, vrf_generic)
-        func_model = Model(inputs=[csi], outputs=[vd, vrf])
-
-        return func_model
+        return Model(inputs=[csi], outputs=[vd, vrf])
 
     @tf.function
     def custom_actication_transmitter(self, inputs):
@@ -688,70 +692,6 @@ class ResNet_model_class():
 
         return V_D_cplx_normalized_per_sample, V_RF_per_sample
 
-    def resnet_4_small_MIMOFDM_receiver(self):
-        kernels = [min(self.K, self.convolutional_kernels),
-                   min(self.N_u_a, self.convolutional_kernels),
-                   min(self.N_b_a, self.convolutional_kernels)]
-        csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
-
-        generic_part_obj = Generic_2_ns_4_small_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
-                                                                  kernels=kernels,
-                                                                  convolutional_strides=self.convolutional_strides,
-                                                                  convolutional_dilation=self.convolutional_dilation,
-                                                                  trainablity=self.generic_part_trainable)
-        specialized_part_obj = Specialized_2_ns_4_small_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
-                                                                          kernels=kernels,
-                                                                          convolutional_strides=self.convolutional_strides,
-                                                                          convolutional_dilation=self.convolutional_dilation,
-                                                                          N_b_a=self.N_b_a,
-                                                                          N_b_rf=self.N_b_rf,
-                                                                          N_u_a=self.N_u_a,
-                                                                          N_u_rf=self.N_u_rf,
-                                                                          N_s=self.N_s,
-                                                                          K=self.K,
-                                                                          PTRS_seperation=self.PTRS_seperation,
-                                                                          trainablity=self.specialized_part_trainable)
-        wd_generic, wrf_generic = generic_part_obj(csi)
-        wd, wrf = specialized_part_obj(wd_generic, wrf_generic)
-        func_model = Model(inputs=[csi], outputs=[wd, wrf])
-        return func_model
-
-    def resnet_4_large_MIMOFDM_receiver(self):
-        kernels = [min(self.K, self.convolutional_kernels),
-                   min(self.N_u_a, self.convolutional_kernels),
-                   min(self.N_b_a, self.convolutional_kernels)]
-        csi = Input(shape=(self.K, self.N_u_a, self.N_b_a, 2), batch_size=self.BATCHSIZE)
-
-        generic_part_obj = Generic_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
-                                                                  kernels=kernels,
-                                                                  convolutional_strides=self.convolutional_strides,
-                                                                  convolutional_dilation=self.convolutional_dilation,
-                                                                  trainablity=True,
-                                                                  subcarrier_strides= self.subcarrier_strides,
-                                                                  N_b_a_strides= self.N_b_a_strides,
-                                                                  N_u_a_strides=self.N_u_a_strides)
-        specialized_part_obj = Specialized_2_ns_4_large_MIMOFDM_CNN_class(convolutional_filters=self.convolutional_filters,
-                                                                          kernels=kernels,
-                                                                          convolutional_strides=self.convolutional_strides,
-                                                                          convolutional_dilation=self.convolutional_dilation,
-                                                                          N_b_a=self.N_b_a,
-                                                                          N_b_rf=self.N_b_rf,
-                                                                          N_u_a=self.N_u_a,
-                                                                          N_u_rf=self.N_u_rf,
-                                                                          N_s=self.N_s,
-                                                                          K=self.K,
-                                                                          PTRS_seperation=self.PTRS_seperation,
-                                                                          trainablity=True,
-                                                                          subcarrier_strides=self.subcarrier_strides,
-                                                                          N_b_a_strides=self.N_b_a_strides,
-                                                                          N_u_a_strides=self.N_u_a_strides)
-
-        # Models
-        vd_generic, vrf_generic = generic_part_obj(csi)
-        vd, vrf = specialized_part_obj(vd_generic, vrf_generic)
-        func_model = Model(inputs=[csi], outputs=[vd, vrf])
-
-        return func_model
     @tf.function
     def custom_actication_receiver(self, inputs0):
         W_D, wrf = inputs0

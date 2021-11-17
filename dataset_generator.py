@@ -18,7 +18,7 @@ class dataset_generator_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std,
-                 mat_fname, dataset_size, data_fragment_size, mode, phase_noise):
+                 mat_fname, dataset_size, data_fragment_size, mode, phase_noise, mat_fname_Sohrabi):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -46,6 +46,7 @@ class dataset_generator_class:
         self.PHN_innovation_std = PHN_innovation_std
         self.mode = mode
         self.phase_noise = phase_noise
+        self.mat_fname_Sohrabi = mat_fname_Sohrabi
 
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
@@ -314,8 +315,28 @@ class dataset_generator_class:
         set_of_ns = tf.tile(tf.reshape(tf.range(self.Nsymb), shape=[1, self.Nsymb]), multiples=[self.BATCHSIZE, 1])
         return H_complex, H_tilde, Lambda_B, Lambda_U, set_of_ns
 
+    @tf.function
+    def data_generator_for_running_Sohrabis_beamformer(self,eval_dataset_size):
+
+        HH_complex = []
+        HH_tilde_0_cplx = []
+        LLambda_B = []
+        LLambda_U = []
+        N_of_batches_in_DS = round(eval_dataset_size / self.BATCHSIZE)
+        for batch_number in range(N_of_batches_in_DS):
+            H_complex, H_tilde, Lambda_B, Lambda_U, set_of_ns = \
+                self.data_generator_for_evaluation_of_proposed_beamformer(batch_number)
+            csi_tx = H_tilde[:, 0, :, :, :, :]
+            HH_complex.append(H_complex)
+            HH_tilde_0_cplx.append(tf.complex(tf.squeeze(csi_tx[:, :, :, :, 0]), tf.squeeze(csi_tx[:, :, :, :, 1])))
+            LLambda_B.append(Lambda_B)
+            LLambda_U.append(Lambda_U)
+        return HH_complex, HH_tilde_0_cplx, LLambda_B, LLambda_U
+
+
+    @tf.function
     def data_generator_for_evaluation_of_Sohrabis_beamformer(self, batch_number):
-        mat_contents = sio.loadmat(self.mat_fname)
+        mat_contents = sio.loadmat(self.mat_fname_Sohrabi)
         # No permutation is needed for the following data because they are not modified in Matlab and merely were passed
         # to the matlab code and came back here without any changes (so their sizes is also Ok)
         H_complex = (mat_contents['H'])[batch_number * self.BATCHSIZE: (batch_number + 1) * self.BATCHSIZE, :, :, :]

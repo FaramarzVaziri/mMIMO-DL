@@ -55,8 +55,8 @@ if __name__ == '__main__':
     impl = 'map_fn'
     impl_phn_free = 'map_fn'
 
-    epochs_pre = 10
-    epochs_post = 10
+    epochs_pre = 100
+    epochs_post = 100
     val_freq_pre = 1
     val_freq_post = 1
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     evaluate_pre = 'no'
 
     # post
-    load_trained_best_model = 'yes'
+    load_trained_best_model = 'no'
     do_post_train = 'yes'
     save_post = 'yes'
     evaluate_post = 'yes'
@@ -77,16 +77,16 @@ if __name__ == '__main__':
     record_metadata = 'yes'
 
     # ML Setup /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    train_dataset_size = 10240
-    train_data_fragment_size = 1024
-    train_dataset_size_post = 10240
-    train_data_fragment_size_post = 1024
-    test_dataset_size = 128
+    train_dataset_size = 2
+    train_data_fragment_size = train_dataset_size
+    train_dataset_size_post = 2
+    train_data_fragment_size_post = train_dataset_size_post
+    test_dataset_size = 2
     test_data_fragment_size = test_dataset_size
-    eval_dataset_size = 128
+    eval_dataset_size = 2
     eval_data_fragment_size = eval_dataset_size
-    BATCHSIZE = 16
-    L_rate = 1e-6
+    BATCHSIZE = 2
+    L_rate = 1e-3
     dropout_rate = 0.0
 
     # DNN setting
@@ -94,19 +94,19 @@ if __name__ == '__main__':
     convolutional_filters = 16
     convolutional_strides = 1
     convolutional_dilation = 1
-    subcarrier_strides = 2
-    N_b_a_strides = 2
-    N_u_a_strides = 2
+    subcarrier_strides = 1
+    N_b_a_strides = 1
+    N_u_a_strides = 1
 
     # MIMO-OFDM setup //////////////////////////////////////////////////////////////////////////////////////////////////
-    N_b_a = 16
-    N_b_rf = 8
+    N_b_a = 4
+    N_b_rf = 2
     N_b_o = N_b_rf
-    N_u_a = 16
-    N_u_rf = 8
+    N_u_a = 4
+    N_u_rf = 2
     N_u_o = N_u_rf
-    N_s = 4
-    K = 32
+    N_s = 1
+    K = 4
     PTRS_seperation = round(K/2)
     SNR = 20.
     P = 100.
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     PHN_innovation_std = np.sqrt(1024/K)*np.sqrt(4.0 * np.pi ** 2 * f_0 ** 2 * 10 ** (L / 10.) * Ts)
     print('-- PHN_innovation_std = ', PHN_innovation_std)
 
-    dataset_name = 'Dataset_samps102400_K32_Na16_rf8/DS1.mat'
+    dataset_name = 'Dataset_K4_Na4_rf2/DS.mat'
     dataset_for_testing_sohrabi = 'DS_for_py_for_testing_Sohrabi.mat'
 
 
@@ -164,9 +164,9 @@ if __name__ == '__main__':
                                               convolutional_kernels, convolutional_filters, convolutional_strides, convolutional_dilation,
                                               subcarrier_strides, N_b_a_strides, N_u_a_strides,
                                               generic_part_trainable, specialized_part_trainable)
-    the_model_tx = obj_neural_net_model.resnet_4_large_MIMOFDM(layer_name = 'TX')
+    the_model_tx = obj_neural_net_model.resnet_4_small_MIMOFDM(layer_name = 'TX')
     print('-- TX resnet model is created')
-    the_model_rx = obj_neural_net_model.resnet_4_large_MIMOFDM(layer_name = 'RX')
+    the_model_rx = obj_neural_net_model.resnet_4_small_MIMOFDM(layer_name = 'RX')
 
     print('-- RX resnet model is created')
 

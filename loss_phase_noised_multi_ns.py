@@ -6,7 +6,7 @@ class loss_phase_noised_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, truncation_ratio_keep, Nsymb,
-                 sampling_ratio_time_domain_keep, sampling_ratio_subcarrier_domain_keep, mode, impl):
+                 sampling_ratio_time_domain_keep, sampling_ratio_subcarrier_domain_keep, mode, impl, sampling_ratio_time_domain_keep_capacity_metric):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -28,6 +28,7 @@ class loss_phase_noised_class:
         self.sampling_ratio_subcarrier_domain_keep = sampling_ratio_subcarrier_domain_keep
         self.mode = mode
         self.impl = impl
+        self.sampling_ratio_time_domain_keep_capacity_metric = sampling_ratio_time_domain_keep_capacity_metric
 
     @tf.function
     def cyclical_shift(self, Lambda_matrix, k, flip):
@@ -315,16 +316,14 @@ class loss_phase_noised_class:
     @tf.function
     def capacity_forall_symbols(self, bundeled_inputs_0):
         V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U = bundeled_inputs_0  # [Nsymb, k, ...]
-        if (self.mode == 'train') or (self.mode == 'test'):
-            H = tf.tile([H], multiples=[round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1])
-        else:
-            H = tf.tile([H], multiples=[self.Nsymb, 1, 1, 1])
-
+        # print(H)
+        H = tf.tile([H], multiples=[round(self.Nsymb * self.sampling_ratio_time_domain_keep), 1, 1, 1])
         bundeled_inputs_1 = [V_D, W_D, H, V_RF, W_RF, Lambda_B, Lambda_U]
         # print('in phase noised loss function =', bundeled_inputs_1)
         c, RX, RQ = tf.map_fn(self.capacity_forall_k, bundeled_inputs_1,
-                              fn_output_signature=(tf.float32, tf.float32, tf.float32),
-                              parallel_iterations=round(self.Nsymb * self.sampling_ratio_time_domain_keep))
+                                  fn_output_signature=(tf.float32, tf.float32, tf.float32),
+                                  parallel_iterations=round(self.Nsymb * self.sampling_ratio_time_domain_keep))
+
         return c, RX, RQ
 
     @tf.function

@@ -27,7 +27,7 @@ except ValueError:
 
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
-from CNN_model_ns_as_input_additive_FC import ResNet_model_class # this is the best currently, it has repetitions and no shortcut
+from CNN_ns_as_input_concat_one_hot import ResNet_model_class # this is the best currently, it has repetitions and no shortcut
 from ML_model_ns_as_input import ML_model_class
 from dataset_generator import dataset_generator_class
 from loss_phase_noise_free import loss_phase_noise_free_class
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     evaluate_pre = 'yes'
 
     # post
-    load_trained_best_model = 'no'
+    load_trained_best_model = 'yes'
     do_post_train = 'yes'
     save_post = 'yes'
     evaluate_post = 'yes'
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # ML Setup /////////////////////////////////////////////////////////////////////////////////////////////////////////
     train_dataset_size = 10240
     train_data_fragment_size = train_dataset_size
-    train_dataset_size_post = 102400
+    train_dataset_size_post = 10240
     train_data_fragment_size_post = train_dataset_size_post
     test_dataset_size = 128
     test_data_fragment_size = test_dataset_size
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     dropout_rate = 0.0
 
     # DNN setting
-    convolutional_kernels = 3
+    convolutional_kernels = 5
     convolutional_filters = 16
     convolutional_strides = 1
     convolutional_dilation = 1
@@ -141,7 +141,7 @@ if __name__ == '__main__':
 
     # Truncation and sampling of sums
     truncation_ratio_keep = 4 / K
-    sampling_ratio_time_domain_keep = 1 / Nsymb
+    sampling_ratio_time_domain_keep = 10 / Nsymb
     sampling_ratio_subcarrier_domain_keep = 4 / K
 
     print('-- Parameter initialization is done.')
@@ -164,9 +164,9 @@ if __name__ == '__main__':
                                               Nsymb, Ts, fc, c, dataset_name, train_dataset_size, dropout_rate,
                                               convolutional_kernels, convolutional_filters, convolutional_strides, convolutional_dilation)
 
-    the_model_tx = obj_neural_net_model.resnet_function_transceiver(trainable_csi, trainable_ns)
+    the_model_tx = obj_neural_net_model.resnet_function_transceiver_small_sys(trainable_csi, trainable_ns, layer_name='TX')
     print('-- TX resnet model is created')
-    the_model_rx = obj_neural_net_model.resnet_function_transceiver(trainable_csi, trainable_ns)
+    the_model_rx = obj_neural_net_model.resnet_function_transceiver_small_sys(trainable_csi, trainable_ns, layer_name='RX')
     print('-- RX resnet model is created')
 
     obj_loss_phase_noise_free_class = loss_phase_noise_free_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,

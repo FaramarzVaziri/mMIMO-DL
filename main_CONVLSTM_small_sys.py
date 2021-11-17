@@ -27,7 +27,7 @@ except ValueError:
 
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
-from CNN_model_CONVLSTM import ResNet_model_class, Generic_2_ns_4_small_MIMOFDM_CNN_class, Generic_2_ns_4_large_MIMOFDM_CNN_class, Specialized_2_ns_4_small_MIMOFDM_CNN_class, Specialized_2_ns_4_large_MIMOFDM_CNN_class # this is the best currently, it has repetitions and no shortcut
+from CNN_CONVLSTM import ResNet_model_class, Generic_2_ns_4_small_MIMOFDM_CNN_class, Generic_2_ns_4_large_MIMOFDM_CNN_class, Specialized_2_ns_4_small_MIMOFDM_CNN_class, Specialized_2_ns_4_large_MIMOFDM_CNN_class # this is the best currently, it has repetitions and no shortcut
 from ML_model_CONVLSTM import ML_model_class
 from dataset_generator import dataset_generator_class
 from loss_phase_noise_free import loss_phase_noise_free_class
