@@ -95,7 +95,7 @@ class ML_model_class(tf.keras.Model):
                 W_D_tmp = []
                 W_RF_tmp = []
 
-                selected_symbols = [24]
+                selected_symbols = [0]
                 # selected_symbols = np.random.choice(self.Nsymb,
                 #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
                 #                                     replace=False)
@@ -144,7 +144,7 @@ class ML_model_class(tf.keras.Model):
                 W_D_tmp = []
                 W_RF_tmp = []
 
-                selected_symbols = [24]
+                selected_symbols = [0]
                 # selected_symbols = np.random.choice(self.Nsymb,
                 #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
                 #                                     replace=False)
@@ -195,7 +195,7 @@ class ML_model_class(tf.keras.Model):
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
 
-            selected_symbols = [24]
+            selected_symbols = [0]
             # selected_symbols = np.random.choice(self.Nsymb,
             #                                     round(self.sampling_ratio_time_domain_keep * self.Nsymb),
             #                                     replace=False)
@@ -270,7 +270,7 @@ class ML_model_class(tf.keras.Model):
             _, H_complex, H_tilde, H_tilde_complex, Lambda_B, Lambda_U, set_of_ns = inputs0
             # 5 4          6         5
             csi_tx, csi_rx = self.NN_input_preparation(H_tilde)
-            selected_symbols = [24]
+            selected_symbols = [0]
             # selected_symbols = np.random.choice(self.Nsymb,
             #                                         round(self.sampling_ratio_time_domain_keep * self.Nsymb),
             #                                         replace=False)
@@ -358,7 +358,7 @@ class ML_model_class(tf.keras.Model):
         # HH_tilde_0_cplx = []
         # LLambda_B = []
         # LLambda_U = []
-        selected_symbols = [24]
+        selected_symbols = [0]
 
         N_of_batches_in_DS = round(self.eval_dataset_size / self.BATCHSIZE)
         for batch_number in range(N_of_batches_in_DS):

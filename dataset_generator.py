@@ -18,7 +18,8 @@ class dataset_generator_class:
 
     def __init__(self, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers, angular_spread_rad, wavelength,
                  d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc, c, PHN_innovation_std,
-                 mat_fname, dataset_size, data_fragment_size, mode, phase_noise, mat_fname_Sohrabi):
+                 mat_fname, dataset_size, data_fragment_size, mode, phase_noise, mat_fname_Sohrabi
+                 ,dataset_id_start, is_large_sys):
         self.N_b_a = N_b_a
         self.N_b_rf = N_b_rf
         self.N_u_a = N_u_a
@@ -47,6 +48,8 @@ class dataset_generator_class:
         self.mode = mode
         self.phase_noise = phase_noise
         self.mat_fname_Sohrabi = mat_fname_Sohrabi
+        self.dataset_id_start = dataset_id_start
+        self.is_large_sys = is_large_sys
 
     # PHASE NOISE GENERATION////////////////////////////////////////////////////////////////////////////////////////////
     # these three functions take care of repeating the phase noise for the antennas of the same oscillator
@@ -262,7 +265,7 @@ class dataset_generator_class:
         return DS
 
     def dataset_generator(self):
-        DS = self.segmented_dataset_generator(self.mat_fname)
+        DS = self.segmented_dataset_generator(self.mat_fname) # if small sys, DS is loaded at once
 
         # # small DS loaded at once
         # print('-- data segment added: ', self.mat_fname)
@@ -270,12 +273,13 @@ class dataset_generator_class:
 
         # # Large DS loaded incrementally
         if (self.mode == "train"):
-            l = len(self.mat_fname)
-            for i in range(1, round(self.dataset_size/self.data_fragment_size),1):
-                file_name = self.mat_fname[0:l - 5] + str(i) + '.mat'
-                DS = DS.concatenate(self.segmented_dataset_generator(file_name))
-                print('-- data segment added: ',file_name)
-                print('-- dataset cardinality =', tf.data.experimental.cardinality(DS))
+            if (self.is_large_sys == 'yes'):
+                for i in range(1+ self.dataset_id_start, 1+ self.dataset_id_start + round(self.dataset_size/self.data_fragment_size), 1):
+                    file_name = 'Dataset_samps128_K32_Na32/DS' + str(i) + '.mat'
+                    DS = DS.concatenate(self.segmented_dataset_generator(file_name))
+
+        print('-- dataset cardinality =', tf.data.experimental.cardinality(DS))
+
         DS = DS.cache()
         DS = DS.batch(self.BATCHSIZE)
         DS = DS.map(self.dataset_mapper, num_parallel_calls=tf.data.AUTOTUNE)

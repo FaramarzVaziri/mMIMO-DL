@@ -29,7 +29,7 @@ except ValueError:
 
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
-from CNN_bipartite import ResNet_model_class # this is the best currently, it has repetitions and no shortcut
+from CNN_bipartite import CNN_model_class # this is the best currently, it has repetitions and no shortcut
 from ML_model import ML_model_class
 from dataset_generator import dataset_generator_class
 from loss_phase_noise_free import loss_phase_noise_free_class
@@ -158,12 +158,12 @@ if __name__ == '__main__':
     the_dataset_test = obj_dataset_test.dataset_generator()
     print('-- Dataset creation is done.')
 
-    obj_neural_net_model = ResNet_model_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, SNR, P, N_c, N_scatterers, angular_spread_rad,
-                                              wavelength, d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep,
-                                              Nsymb, Ts, fc, c, dataset_name, train_dataset_size, dropout_rate,
-                                              convolutional_kernels, convolutional_filters, convolutional_strides, convolutional_dilation,
-                                              subcarrier_strides, N_b_a_strides, N_u_a_strides,
-                                              generic_part_trainable, specialized_part_trainable)
+    obj_neural_net_model = CNN_model_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, SNR, P, N_c, N_scatterers, angular_spread_rad,
+                                           wavelength, d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep,
+                                           Nsymb, Ts, fc, c, dataset_name, train_dataset_size, dropout_rate,
+                                           convolutional_kernels, convolutional_filters, convolutional_strides, convolutional_dilation,
+                                           subcarrier_strides, N_b_a_strides, N_u_a_strides,
+                                           generic_part_trainable, specialized_part_trainable)
     the_model_tx = obj_neural_net_model.resnet_4_small_MIMOFDM(layer_name = 'TX')
     print('-- TX resnet model is created')
     the_model_rx = obj_neural_net_model.resnet_4_small_MIMOFDM(layer_name = 'RX')

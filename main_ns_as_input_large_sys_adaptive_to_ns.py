@@ -8,32 +8,30 @@ import tensorflow as tf
 import numpy as np
 import os
 
-
 # Clear any logs from previous runs
 
 
 try:
-  resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
-  tf.config.experimental_connect_to_cluster(resolver)
-  tf.tpu.experimental.initialize_tpu_system(resolver)
-  print("All devices: ", tf.config.list_logical_devices('TPU'))
-  # strategy = tf.distribute.experimental.TPUStrategy(resolver)
-  strategy = tf.distribute.TPUStrategy(resolver)
+    resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
+    tf.config.experimental_connect_to_cluster(resolver)
+    tf.tpu.experimental.initialize_tpu_system(resolver)
+    print("All devices: ", tf.config.list_logical_devices('TPU'))
+    # strategy = tf.distribute.experimental.TPUStrategy(resolver)
+    strategy = tf.distribute.TPUStrategy(resolver)
 
 except ValueError:
-  strategy = tf.distribute.get_strategy()
-
+    strategy = tf.distribute.get_strategy()
 
 # tf.config.run_functions_eagerly(True)
 # import matplotlib.pyplot as plt
 
 
 # Import classes ///////////////////////////////////////////////////////////////////////////////////////////////////////
-from CNN_bipartite import CNN_model_class # this is the best currently, it has repetitions and no shortcut
-from ML_model import ML_model_class
+from CNN_ns_as_input import CNN_model_class  # this is the best currently, it has repetitions and no shortcut
+from ML_model_ns_as_input import ML_model_class
 from dataset_generator import dataset_generator_class
 from loss_phase_noise_free import loss_phase_noise_free_class
-from loss_phase_noised_single_ns import loss_phase_noised_class
+from loss_phase_noised_multi_ns import loss_phase_noised_class
 
 
 def training_metadata_writer(file_name, training_metadata):
@@ -48,10 +46,9 @@ def training_metadata_writer(file_name, training_metadata):
         training_metadata_dict = {'training_metadata': training_metadata}
         sio.savemat(file_name, training_metadata_dict)
 
+
 # Main /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if __name__ == '__main__':
-    generic_part_trainable = True
-    specialized_part_trainable = True
     impl = 'map_fn'
     impl_phn_free = 'map_fn'
 
@@ -61,15 +58,16 @@ if __name__ == '__main__':
     val_freq_post = 1
 
     load_trained_best_model = 'yes'
+
     # pre
-    do_pre_train = 'yes'
-    save_pre = 'yes'
+    do_pre_train = 'no'
+    save_pre = 'no'
     evaluate_pre = 'no'
 
     # post
 
-    do_post_train = 'no'
-    save_post = 'no'
+    do_post_train = 'yes'
+    save_post = 'yes'
     evaluate_post = 'no'
 
     gather_data_for_runnig_Sohrabis_beamformer = 'no'
@@ -79,43 +77,47 @@ if __name__ == '__main__':
     record_metadata = 'yes'
 
     # ML Setup /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    create_DS_phase_noise_free = 'yes'
+    create_DS_phase_noise_free = 'no'
     train_dataset_size = 1024
     train_data_fragment_size = 128
-    create_DS_phase_noised = 'no'
+    create_DS_phase_noised = 'yes'
     train_dataset_size_post = 10240
     train_data_fragment_size_post = 128
     test_dataset_size = 128
     test_data_fragment_size = test_dataset_size
     eval_dataset_size = 128
     eval_data_fragment_size = eval_dataset_size
-
-
-    for train_id in range(0,1,1):
+    is_large_sys = 'yes'
+    for train_id in range(0, 5, 1):
         print('train_id = ', train_id)
-        dataset_id_start = round(train_dataset_size_post/train_data_fragment_size_post)*train_id
+        dataset_id_start = round(train_dataset_size_post / train_data_fragment_size_post) * train_id
 
         BATCHSIZE = 4
-        L_rate_initial = 1e-7
+        L_rate_initial = 1e-5
         dropout_rate = 0.0
+        gradient_norm_clipper_pre = 1e-4
+        gradient_norm_clipper_post = 1.
+        ReduceLROnPlateau_decay_rate = 0.5
+        ReduceLROnPlateau_patience = 5
+        ReduceLROnPlateau_min_lr = 1e-6
 
         # DNN setting
         convolutional_kernels = 5
+        extra_kernel = 2
         convolutional_filters = 16
         convolutional_strides = 1
         convolutional_dilation = 1
 
-        subcarrier_strides_l1=2
-        N_u_a_strides_l1=2
-        N_b_a_strides_l1=2
+        subcarrier_strides_l1 = 2
+        N_u_a_strides_l1 = 2
+        N_b_a_strides_l1 = 2
 
-        subcarrier_strides_l2=2
-        N_u_a_strides_l2=1
-        N_b_a_strides_l2=1
+        subcarrier_strides_l2 = 2
+        N_u_a_strides_l2 = 2
+        N_b_a_strides_l2 = 2
 
-        n_common_layers = 5
-        n_D_and_RF_layers_generic = 10
-        n_D_and_RF_layers_specialized = 10
+        n_common_layers = 10
+        n_D_and_RF_layers = 10
 
         # MIMO-OFDM setup //////////////////////////////////////////////////////////////////////////////////////////////////
         N_b_a = 32
@@ -159,8 +161,8 @@ if __name__ == '__main__':
 
         # Truncation and sampling of sums
         truncation_ratio_keep = 4 / K
-        sampling_ratio_time_domain_keep = 1 / Nsymb
-        sampling_ratio_time_domain_keep_capacity_metric = 1 / Nsymb
+        sampling_ratio_time_domain_keep = 2 / Nsymb
+        sampling_ratio_time_domain_keep_capacity_metric = 2 / Nsymb
         sampling_ratio_subcarrier_domain_keep = K / K
 
         print('-- Parameter initialization is done.')
@@ -168,9 +170,9 @@ if __name__ == '__main__':
             obj_dataset_train = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
                                                         angular_spread_rad, wavelength, d, BATCHSIZE,
                                                         phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
-                                                        c, PHN_innovation_std*phase_noise_power_augmentation_factor,
+                                                        c, PHN_innovation_std * phase_noise_power_augmentation_factor,
                                                         dataset_name, train_dataset_size, train_data_fragment_size,
-                                                        'train', 'no',dataset_for_testing_sohrabi, train_id)
+                                                        'train', 'no', dataset_for_testing_sohrabi, train_id, is_large_sys)
             the_dataset_train = obj_dataset_train.dataset_generator()
             print('-- cardinality of the train DS: ', tf.data.experimental.cardinality(the_dataset_train))
 
@@ -178,31 +180,30 @@ if __name__ == '__main__':
                                                    angular_spread_rad, wavelength, d, BATCHSIZE,
                                                    phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
                                                    c, PHN_innovation_std, dataset_name, test_dataset_size,
-                                                   test_data_fragment_size, 'test', '-',dataset_for_testing_sohrabi, train_id)
+                                                   test_data_fragment_size, 'test', '-', dataset_for_testing_sohrabi,
+                                                   train_id, is_large_sys)
         the_dataset_test = obj_dataset_test.dataset_generator()
         print('-- Dataset creation is done.')
 
-        obj_neural_net_model = CNN_model_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, SNR, P, N_c, N_scatterers, angular_spread_rad,
-                                               wavelength, d, BATCHSIZE, phase_shift_stddiv, truncation_ratio_keep,
-                                               Nsymb, Ts, fc, c, dataset_name, train_dataset_size, dropout_rate,
-                                               convolutional_kernels, convolutional_filters, convolutional_strides,
-                                               convolutional_dilation,
+        obj_neural_net_model = CNN_model_class(P, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, BATCHSIZE,
+                                               truncation_ratio_keep, Nsymb, dropout_rate, convolutional_kernels,
+                                               convolutional_filters,
+                                               convolutional_strides, convolutional_dilation,
                                                subcarrier_strides_l1, N_u_a_strides_l1, N_b_a_strides_l1,
                                                subcarrier_strides_l2, N_u_a_strides_l2, N_b_a_strides_l2,
-                                               generic_part_trainable, specialized_part_trainable,
-                                               n_common_layers, n_D_and_RF_layers_generic,
-                                               n_D_and_RF_layers_specialized)
-        the_model_tx = obj_neural_net_model.CNN_transceiver_large_sys(layer_name ='TX')
-        print('-- TX resnet model is created')
-        the_model_rx = obj_neural_net_model.CNN_transceiver_large_sys(layer_name ='RX')
+                                               n_common_layers, n_D_and_RF_layers, extra_kernel)
 
+        the_model_tx = obj_neural_net_model.CNN_transceiver(trainable_ns=True, trainable_csi= True, layer_name='TX')
+        print('-- TX resnet model is created')
+        the_model_rx = obj_neural_net_model.CNN_transceiver(trainable_ns=True, trainable_csi= True, layer_name='RX')
         print('-- RX resnet model is created')
 
         obj_loss_phase_noise_free_class = loss_phase_noise_free_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
                                                                       SNR, P, N_c, N_scatterers,
                                                                       angular_spread_rad, wavelength, d,
-                                                                      BATCHSIZE,Nsymb, sampling_ratio_time_domain_keep,
-                                                                      impl_phn_free, sampling_ratio_subcarrier_domain_keep)
+                                                                      BATCHSIZE, Nsymb, sampling_ratio_time_domain_keep,
+                                                                      impl_phn_free,
+                                                                      sampling_ratio_subcarrier_domain_keep)
         the_loss_function = obj_loss_phase_noise_free_class.capacity_forall_samples
         print('-- phase noise free loss function created')
 
@@ -215,14 +216,14 @@ if __name__ == '__main__':
         capacity_metric = obj_capacity_metric.capacity_forall_samples
         print('-- capacity metric with phase noise is created')
 
-
-        obj_ML_model_pre_training = ML_model_class(the_model_tx, the_model_rx, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, PTRS_seperation, SNR, P, N_c,
+        obj_ML_model_pre_training = ML_model_class(the_model_tx, the_model_rx, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
+                                                   PTRS_seperation, SNR, P, N_c,
                                                    N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE,
-                                                   phase_shift_stddiv, truncation_ratio_keep, sampling_ratio_time_domain_keep, Nsymb, Ts, fc, c,
-                                                   PHN_innovation_std, dataset_name, eval_dataset_size, 'train', False)
+                                                   phase_shift_stddiv, truncation_ratio_keep,
+                                                   sampling_ratio_time_domain_keep, sampling_ratio_time_domain_keep_capacity_metric,
+                                                   Nsymb, Ts, fc, c, PHN_innovation_std, dataset_name, eval_dataset_size, 'train', False)
 
-        gradient_norm_clipper = 1.
-        optimizer_1 = tf.keras.optimizers.Adam(learning_rate= L_rate_initial)#, clipnorm = gradient_norm_clipper)
+        optimizer_1 = tf.keras.optimizers.Adam(learning_rate=L_rate_initial, clipnorm = gradient_norm_clipper_pre)
         # tx
         tf.keras.utils.plot_model(the_model_tx, show_shapes=True, show_layer_names=True, to_file='cnn_tx.png')
         the_model_tx.summary()
@@ -239,7 +240,7 @@ if __name__ == '__main__':
             loss=the_loss_function,
             activation_TX=obj_neural_net_model.custom_actication_transmitter,
             activation_RX=obj_neural_net_model.custom_actication_receiver,
-            metric_capacity_in_presence_of_phase_noise = capacity_metric)
+            metric_capacity_in_presence_of_phase_noise=capacity_metric)
 
         print('train_dataset_size=', train_dataset_size,
               ' train_dataset_size_post=', train_dataset_size_post,
@@ -253,22 +254,11 @@ if __name__ == '__main__':
               'convolutional_kernels', convolutional_kernels)
 
         print('-- ML model is created')
-
-        ReduceLROnPlateau_decay_rate = 0.5
-        ReduceLROnPlateau_patience = 5
-        ReduceLROnPlateau_min_lr = 1e-6
         reduce_lr_pre = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss',
-                                                         factor= ReduceLROnPlateau_decay_rate, patience= ReduceLROnPlateau_patience, min_lr= ReduceLROnPlateau_min_lr,
-                                                         mode='min', verbose=1)
-
-        # checkpoint_path_pre = "checkpoints/pre/best_model_weights_only/cp.ckpt"
-        # checkpoint_dir_pre = os.path.dirname(checkpoint_path_pre)
-        # checkpoint_callback_pre = tf.keras.callbacks.ModelCheckpoint(
-        #     filepath= checkpoint_dir_pre, monitor='neg_capacity_train_loss', verbose=1, save_best_only=True,
-        #     save_weights_only=True, mode='min', save_freq='epoch',
-        #     options=None
-        # )
-
+                                                             factor=ReduceLROnPlateau_decay_rate,
+                                                             patience=ReduceLROnPlateau_patience,
+                                                             min_lr=ReduceLROnPlateau_min_lr,
+                                                             mode='min', verbose=1)
 
         if (load_trained_best_model == 'yes'):
             # best_model_post = tf.train.latest_checkpoint("checkpoints/post")
@@ -280,10 +270,10 @@ if __name__ == '__main__':
             print('-- Pre-training started')
             start_time = time.time()
             h_pre = obj_ML_model_pre_training.fit(the_dataset_train,
-                                           epochs=epochs_pre, callbacks=[reduce_lr_pre]
-                                           ,validation_data=the_dataset_test,
-                                           validation_freq= val_freq_pre,
-                                           verbose=1)
+                                                  epochs=epochs_pre, callbacks=[reduce_lr_pre]
+                                                  , validation_data=the_dataset_test,
+                                                  validation_freq=val_freq_pre,
+                                                  verbose=1)
             if (save_pre == 'yes'):
                 obj_ML_model_pre_training.save_weights('saved_model_weights/pre/my_model.h5')
                 obj_ML_model_pre_training.save_weights('saved_model_weights/my_model.h5')
@@ -291,7 +281,6 @@ if __name__ == '__main__':
 
             end_time_1 = time.time()
             print("-- pre-training is done. (elapsed time = ", (end_time_1 - start_time), ' s)')
-
 
         # ==================================================================================================================
         # ==================================================================================================================
@@ -301,7 +290,7 @@ if __name__ == '__main__':
             print('-- Evaluation of the proposed pre-trained network has started')
             start_time_2 = time.time()
 
-            C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples\
+            C, capacity_sequence_in_frame_forall_samples, RX_forall_k_forall_OFDMs_forall_samples, RQ_forall_k_forall_OFDMs_forall_samples \
                 = obj_ML_model_pre_training.evaluation_of_proposed_beamformer()
 
             C_samples_x_OFDM_index = capacity_sequence_in_frame_forall_samples.numpy()
@@ -314,7 +303,8 @@ if __name__ == '__main__':
                     'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
             sio.savemat("evaluation_data_pre.mat", mdic)
             end_time_2 = time.time()
-            print('-- proposed pre-trained model is evaluated and data stored for matlab box-charts. (elapsed time =', (end_time_2 - start_time_2), ' seconds')
+            print('-- proposed pre-trained model is evaluated and data stored for matlab box-charts. (elapsed time =',
+                  (end_time_2 - start_time_2), ' seconds')
 
         # ==================================================================================================================
         # ==================================================================================================================
@@ -332,9 +322,9 @@ if __name__ == '__main__':
             RQ_forall_k_forall_OFDMs_forall_samples = RQ_forall_k_forall_OFDMs_forall_samples.numpy()
 
             mdic_soh = {"C_samples_x_OFDM_index": C_samples_x_OFDM_index,
-                    "L": L,
-                    'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
-                    'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
+                        "L": L,
+                        'RX_forall_k_forall_OFDMs_forall_samples': RX_forall_k_forall_OFDMs_forall_samples,
+                        'RQ_forall_k_forall_OFDMs_forall_samples': RQ_forall_k_forall_OFDMs_forall_samples}
             sio.savemat("evaluation_data_Sohrabi.mat", mdic_soh)
 
             end_time_3 = time.time()
@@ -349,12 +339,15 @@ if __name__ == '__main__':
         # post training ====================================================================================================
         # In this stage, we do a phase noised training to accurately optimize the beamformer
         if create_DS_phase_noised == 'yes':
-            obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c, N_scatterers,
-                                                        angular_spread_rad, wavelength, d, BATCHSIZE,
-                                                        phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
-                                                        c, phase_noise_power_augmentation_factor*PHN_innovation_std,
-                                                            dataset_name, train_dataset_size_post, train_data_fragment_size_post,
-                                                            'train', 'yes',dataset_for_testing_sohrabi, train_id)
+            obj_dataset_train_phn = dataset_generator_class(N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K, SNR, P, N_c,
+                                                            N_scatterers,
+                                                            angular_spread_rad, wavelength, d, BATCHSIZE,
+                                                            phase_shift_stddiv, truncation_ratio_keep, Nsymb, Ts, fc,
+                                                            c,
+                                                            phase_noise_power_augmentation_factor * PHN_innovation_std,
+                                                            dataset_name, train_dataset_size_post,
+                                                            train_data_fragment_size_post,
+                                                            'train', 'yes', dataset_for_testing_sohrabi, train_id, is_large_sys)
             the_dataset_train_phn = obj_dataset_train_phn.dataset_generator()
 
             print('-- phase-noised Dataset is created.')
@@ -370,19 +363,20 @@ if __name__ == '__main__':
 
         # D. Transfer learning
         obj_ML_model_post_training = ML_model_class(the_model_tx, the_model_rx, N_b_a, N_b_rf, N_u_a, N_u_rf, N_s, K,
-                                                   PTRS_seperation, SNR, P, N_c,
-                                                   N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE,
-                                                   phase_shift_stddiv, truncation_ratio_keep, sampling_ratio_time_domain_keep, Nsymb, Ts, fc, c,
-                                                   PHN_innovation_std, dataset_name, eval_dataset_size, 'train', True)
-
+                                                    PTRS_seperation, SNR, P, N_c,
+                                                    N_scatterers, angular_spread_rad, wavelength, d, BATCHSIZE,
+                                                    phase_shift_stddiv, truncation_ratio_keep,
+                                                    sampling_ratio_time_domain_keep, sampling_ratio_time_domain_keep_capacity_metric,
+                                                    Nsymb, Ts, fc, c,
+                                                    PHN_innovation_std, dataset_name, eval_dataset_size, 'train', True)
 
         print('-- Transfer weights and biases is done')
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            L_rate_initial,
-            decay_steps=round(train_dataset_size / BATCHSIZE),  # one epoch
-            decay_rate=0.8,
-            staircase=False)
-        optimizer_2 = tf.keras.optimizers.Adam(learning_rate=L_rate_initial, clipnorm = gradient_norm_clipper)
+        # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        #     L_rate_initial,
+        #     decay_steps=round(train_dataset_size / BATCHSIZE),  # one epoch
+        #     decay_rate=0.8,
+        #     staircase=False)
+        optimizer_2 = tf.keras.optimizers.Adam(learning_rate=L_rate_initial, clipnorm=gradient_norm_clipper_post)
         obj_ML_model_post_training.compile(
             optimizer=optimizer_2,
             loss=the_loss_function_phn_approx,
@@ -391,9 +385,10 @@ if __name__ == '__main__':
             metric_capacity_in_presence_of_phase_noise=capacity_metric)
 
         print('-- compiling the new ML model with new optimizer and phase noised loss is done')
-        reduce_lrTL = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss', factor= ReduceLROnPlateau_decay_rate,
-                                                           patience=ReduceLROnPlateau_patience, min_lr=ReduceLROnPlateau_min_lr, mode='min', verbose=1)
-
+        reduce_lrTL = tf.keras.callbacks.ReduceLROnPlateau(monitor='neg_capacity_train_loss',
+                                                           factor=ReduceLROnPlateau_decay_rate,
+                                                           patience=ReduceLROnPlateau_patience,
+                                                           min_lr=ReduceLROnPlateau_min_lr, mode='min', verbose=1)
 
         if (do_post_train == 'yes'):
             print('-- Training in presence of phase noise has started.')
@@ -401,9 +396,9 @@ if __name__ == '__main__':
             h_post = obj_ML_model_post_training.fit(the_dataset_train_phn,
                                                     epochs=epochs_post,
                                                     callbacks=[reduce_lrTL]
-                                                     ,validation_data=the_dataset_test,
-                                                    validation_freq= val_freq_post,
-                                                     verbose=1) #
+                                                    , validation_data=the_dataset_test,
+                                                    validation_freq=val_freq_post,
+                                                    verbose=1)  #
             if (save_post == 'yes'):
                 obj_ML_model_post_training.save_weights('saved_model_weights/post/my_model.h5')
                 obj_ML_model_post_training.save_weights('saved_model_weights/my_model.h5')
@@ -486,7 +481,7 @@ if __name__ == '__main__':
             N_b_a_strides_l1,
             N_u_a_strides_l1,
             n_common_layers,
-            n_D_and_RF_layers_generic,
+            n_D_and_RF_layers,
             n_params_tx,
             epochs_pre,
             epochs_post,
